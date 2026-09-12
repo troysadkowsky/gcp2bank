@@ -41,6 +41,33 @@
   h1{ font-size: clamp(26px,4vw,38px); margin: 6px 0 8px; }
   .dek{ color: var(--ink-2); font-size:14px; max-width: 70ch; line-height:1.6; }
 
+  .about-viz{ margin-top:14px; max-width:70ch; }
+  .about-toggle{
+    display:flex; align-items:center; gap:10px; background:none; border:none; padding:0;
+    font-family:"IBM Plex Sans",sans-serif; font-size:13px; font-weight:600; color:var(--ink);
+    cursor:pointer;
+  }
+  .about-toggle:hover{ background:none; color:var(--ink); }
+  .about-toggle-label{
+    font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:500;
+    text-transform:uppercase; letter-spacing:.06em; color:var(--accent);
+    display:inline-flex; align-items:center; gap:5px;
+  }
+  .about-toggle .chev{ transition:transform 150ms ease; font-size:10px; }
+  .about-toggle[aria-expanded="true"] .chev{ transform:rotate(180deg); }
+  .about-content{ margin-top:14px; color:var(--ink-2); font-size:13.5px; line-height:1.65; }
+  .about-content p{ margin:0 0 12px; max-width:68ch; }
+  .about-content ul{ margin:0 0 20px; padding-left:20px; }
+  .about-content li{ margin-bottom:9px; max-width:66ch; }
+  .about-content li:last-child{ margin-bottom:0; }
+  .about-content strong{ color:var(--ink); font-weight:600; }
+  .about-h{
+    font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:600;
+    text-transform:uppercase; letter-spacing:.06em; color:var(--accent);
+    margin:20px 0 10px;
+  }
+  .about-h:first-of-type{ margin-top:4px; }
+
   .console{
     display:flex; flex-wrap:wrap; gap: 18px; align-items:center;
     background: var(--panel); border:1px solid var(--border); border-radius:4px;
@@ -157,7 +184,6 @@
     pointer-events:none;
   }
   .monitor .buffering{ color: var(--status-warning); }
-  .monitor .offline{ color: rgba(208,59,59,0.85); }
   .monitor .status-bar{
     position:absolute; top:21px; left:10px; width:110px; height:3px;
     background:rgba(255,255,255,0.12); border-radius:2px; overflow:hidden;
@@ -198,9 +224,40 @@
 <body>
 <div class="wrap">
   <header>
-    <div class="eyebrow">GCP2 &middot; live playback of historical readings &middot; v0.0.14.0</div>
+    <div class="eyebrow">GCP2 &middot; live playback of historical readings &middot; v0.1.0.1</div>
     <h1>Coherence Monitor Bank</h1>
     <p class="dek">Every reading in this bank is fetched live from a 79.5-million-row MySQL table, batch by batch, and played back like a bank of heart-rate monitors. Push the speed past what the server can deliver and the sweep will tell you honestly.</p>
+
+    <div class="about-viz">
+      <button id="aboutToggle" class="about-toggle" aria-expanded="false" aria-controls="aboutContent">
+        <span>About this visualization</span>
+        <span class="about-toggle-label" data-label>Show more<span class="chev">&#9662;</span></span>
+      </button>
+      <div class="about-content" id="aboutContent" hidden>
+        <p>The accompanying cumulative graphs visualize how synchronized attention structurally alters the baseline randomness of the physical network.</p>
+
+        <div class="about-h">Understanding network coherence</div>
+        <ul>
+          <li><strong>The metric.</strong> Coherence measures &ldquo;excess correlation&rdquo; across a global grid of random number generators (RNGs). When the network deviates from standard probability, it suggests that shared human focus or emotional resonance is physically impacting the hardware&rsquo;s expected chaos.</li>
+          <li><strong>The running total.</strong> The cumulative graph plots these continuous deviations as a &ldquo;random walk.&rdquo; A flat, horizontal trend indicates baseline randomness. Steep climbs or dives represent sustained structural anomalies in the data.</li>
+        </ul>
+
+        <div class="about-h">Upward trends &mdash; excess variance</div>
+        <ul>
+          <li><strong>The unbounded ceiling.</strong> The data features positive spikes reaching as high as roughly +90 in a single second. Excess correlation is mathematically unconstrained, allowing the network to register extraordinarily intense, highly improbable deviations.</li>
+          <li><strong>Global synchronization.</strong> A sharp upward slope on the graph indicates a sudden, massive alignment of the RNGs. This synchronization maps to moments of intense, shared global focus &mdash; often triggered by breaking news, widespread shock, or significant planetary events that capture collective attention simultaneously.</li>
+        </ul>
+
+        <div class="about-h">Downward trends &mdash; suppressed variance</div>
+        <ul>
+          <li><strong>The mathematical floor.</strong> The data is structurally bounded by a hard floor of &minus;1.0, exact in every reading across all 19 clusters. Because the underlying variance measure cannot go negative, the coherence metric reaches an absolute limit when normal random &ldquo;noise&rdquo; is entirely flattened.</li>
+          <li><strong>Collective calm or disconnection.</strong> A sustained downward slope occurs when the global network produces unnaturally smooth data. This either reflects a period of profound, internalized collective peace (such as synchronized global meditation) or a highly fractured, dispersed attention field where disconnected, localized human experiences effectively cancel each other out.</li>
+        </ul>
+
+        <div class="about-h">The asymmetry of global events</div>
+        <p>Because suppressed variance is capped at &minus;1.0, downward trends require long, persistent periods of calm or dispersed energy to visibly pull the cumulative total downward. In contrast, the unconstrained nature of excess correlation means a single, unified moment of global shock can spike the data by around 90 in one second &mdash; instantly erasing days of accumulated mathematical quiet.</p>
+      </div>
+    </div>
   </header>
 
   <div class="picker" id="picker"></div>
@@ -270,7 +327,7 @@
 
 <script>
 const API = 'api/';
-const BUILD_VERSION = '0.0.14.0'; // bump on every deploy — forces fresh fetches past any stale cache
+const BUILD_VERSION = '0.1.0.1'; // bump on every deploy — forces fresh fetches past any stale cache
 const DATASET_START = Date.parse('2024-03-01T00:00:00Z');
 const DATASET_END   = Date.parse('2026-09-07T23:59:59Z');
 const N_COLS = 480; // rendering resolution per monitor
@@ -468,8 +525,43 @@ class Monitor{
     if(this.buffer.length) return this.buffer[this.buffer.length-1][0];
     return this.consumedUpTo;
   }
+  // true while simTime hasn't reached this cluster's first real reading yet (e.g.
+  // Lagos doesn't start until 2026-02-09) — nothing exists to fetch, so callers
+  // should neither query for it nor let it block the shared playback clock.
+  notStartedYet(){ return this.firstTs!=null && simTime < this.firstTs; }
+  // Moves the fetch cursor up to (just before) this cluster's real first reading,
+  // if it isn't already there. A cursor left further behind — e.g. from whenever
+  // this monitor was first added — would bound-scan short of the real data and
+  // come back empty on the first real attempt, right back into a false-exhaustion
+  // trap identical to the one this whole mechanism exists to avoid.
+  primeCursorAtStart(){
+    if(this.firstTs == null) return;
+    const primedMs = this.firstTs - 1000;
+    if(!this.cursorTs || Date.parse(this.cursorTs.replace(' ','T')+'Z') < primedMs){
+      this.cursorTs = toMysqlDt(primedMs);
+    }
+  }
   async ensureBuffer(){
-    if(this.fetching || this.exhausted) return;
+    if(this.fetching) return;
+    if(this.notStartedYet()){
+      this.primeCursorAtStart(); // ready to go the instant simTime reaches firstTs
+      return;
+    }
+    // We're at or past this cluster's real start. A fetch attempted before that
+    // point comes back empty — not because there's no more data ever, but because
+    // there's none *yet* — and whichever code path discovered that (this function,
+    // or a paused-state renderStaticWindow()/loadForwardPreview() the user
+    // triggered by scrubbing near there) had no way to tell the difference and
+    // permanently marked the monitor exhausted. Since we've now actually reached
+    // that point, any such exhaustion — and any cursor left behind because
+    // exhaustion short-circuited the priming above — is stale; clear/fix both for
+    // a fresh attempt. (A monitor that ran dry for real, past its lastTs, has
+    // already consumed data up to firstTs, so this leaves that case alone.)
+    if(this.firstTs != null && this.consumedUpTo < this.firstTs){
+      this.exhausted = false;
+      this.primeCursorAtStart();
+    }
+    if(this.exhausted) return;
     const bucket = bucketSecondsForWindow(WINDOW_MS);
     // buffer runway is denominated in data-time; a bucketed row covers `bucket` data-seconds
     // instead of 1, so a fixed row limit buys proportionally more real-time runway
@@ -500,13 +592,25 @@ class Monitor{
   // same as seek() does, so pressing Play afterward resumes streaming forward
   // from exactly where the scrubber sits, through the ordinary tick()/ensureBuffer path.
   async renderStaticWindow(){
-    const windowStart = Math.max(DATASET_START, simTime - WINDOW_MS);
     this.buffer = [];
-    this.cursorTs = toMysqlDt(windowStart - 1000);
     this.exhausted = false;
     this.lastValue = null; this.lastDevices = null;
     this.resetColumns();
     this.fetchGen++;
+    // The whole selected window sits before this cluster's real start — there's
+    // nothing to fetch (an empty-window request would otherwise mark it exhausted,
+    // which ensureBuffer() later has no easy way to tell apart from "ran dry for
+    // real," blocking playback once simTime does reach real data). Skip the
+    // network round-trip entirely; draw()'s offlineBefore path already shows the
+    // right placeholder for this case. Cursor still gets primed so ensureBuffer
+    // can pick up immediately once playback reaches the real start.
+    if(this.notStartedYet()){
+      this.cursorTs = null;
+      this.primeCursorAtStart();
+      return;
+    }
+    const windowStart = Math.max(DATASET_START, simTime - WINDOW_MS);
+    this.cursorTs = toMysqlDt(windowStart - 1000);
     const gen = this.fetchGen;
     this.fetching = true;
     const bucket = bucketSecondsForWindow(WINDOW_MS);
@@ -670,8 +774,8 @@ class Monitor{
       this.valEl.textContent = this.runningTotal.toFixed(2);
       this.rawEl.textContent = 'last reading: ' + (this.lastValue!=null ? this.lastValue.toFixed(3) : '—');
       this.devEl.textContent = this.lastDevices!=null ? this.lastDevices+' devices' : '— devices';
-      this.statusEl.textContent = `no data available — none since ${fmtClock(this.lastTs).slice(0,10)}`;
-      this.statusEl.className = 'status-overlay offline';
+      this.statusEl.textContent = '';
+      this.statusEl.className = 'status-overlay';
       return;
     }
 
@@ -697,7 +801,6 @@ class Monitor{
     const yOf = v => H - ((v-visMin)/(visMax-visMin))*H;
 
     // pass 2: draw
-    let sawGapNearNow = false;
     let path = [];
     for(let i=0;i<N_COLS;i++){
       const absCol = leftAbsCol+i;
@@ -705,9 +808,7 @@ class Monitor{
       const slot = ((absCol%N_COLS)+N_COLS)%N_COLS;
       if(this.ringColIndex[slot] !== absCol) continue; // scrolled past this slot, or never written
       const x = i*colW;
-      // a gap just means the total held flat here — it still renders as part
-      // of the same continuous line, we just note it for the status label
-      if(this.ringGap[slot] && i > N_COLS-8) sawGapNearNow = true;
+      // a gap just means the total held flat here — it still renders as part of the same continuous line
       const mn = this.ringMinMax[slot*2], mx = this.ringMinMax[slot*2+1];
       path.push([x, yOf(mn), yOf(mx)]);
     }
@@ -725,12 +826,6 @@ class Monitor{
     if(this.loading){
       this.statusEl.textContent = this.loadingPct!=null ? `loading… ${this.loadingPct}%` : 'loading…';
       this.statusEl.className = 'status-overlay buffering';
-    } else if(this.exhausted){
-      this.statusEl.textContent = 'no data available';
-      this.statusEl.className = 'status-overlay offline';
-    } else if(sawGapNearNow){
-      this.statusEl.textContent = 'no data available';
-      this.statusEl.className = 'status-overlay offline';
     } else if(this.bufferReachMs()-this.consumedUpTo < 500){
       this.statusEl.textContent = 'loading…';
       this.statusEl.className = 'status-overlay buffering';
@@ -791,8 +886,8 @@ class Monitor{
       this.rawEl.textContent = 'last reading: ' + (this.previewLastValue!=null ? this.previewLastValue.toFixed(3) : '—');
       this.devEl.textContent = this.previewLastDevices!=null ? this.previewLastDevices+' devices' : '— devices';
     }
-    this.statusEl.textContent = hasData ? '' : 'no data available';
-    this.statusEl.className = hasData ? 'status-overlay' : 'status-overlay offline';
+    this.statusEl.textContent = '';
+    this.statusEl.className = 'status-overlay';
   }
   // draws one contiguous run of columns as a line (using each column's max, the "high" side of
   // its min/max range) with a translucent fill down to the bottom — financial-chart area style
@@ -871,7 +966,7 @@ function tick(wallNow){
     const desired = simTime + realDt*effectiveSpeed;
     let cap = Infinity;
     for(const m of monitors.values()){
-      if(!m.exhausted) cap = Math.min(cap, m.bufferReachMs());
+      if(!m.exhausted && !m.notStartedYet()) cap = Math.min(cap, m.bufferReachMs());
     }
     const target = Math.min(desired, cap, DATASET_END);
     const actualAdvance = target - simTime;
@@ -1015,6 +1110,17 @@ document.getElementById('btnReset').addEventListener('click', ()=>{
   }
   updateAxisTicks();
 });
+(function setupAboutToggle(){
+  const btn = document.getElementById('aboutToggle');
+  const content = document.getElementById('aboutContent');
+  const label = btn.querySelector('[data-label]');
+  btn.addEventListener('click', ()=>{
+    const expanded = btn.getAttribute('aria-expanded') === 'true';
+    btn.setAttribute('aria-expanded', String(!expanded));
+    content.hidden = expanded;
+    label.innerHTML = expanded ? 'Show more<span class="chev">&#9662;</span>' : 'Show less<span class="chev">&#9662;</span>';
+  });
+})();
 function setTargetSpeed(speed){
   speedMultiplier = Math.max(1, Math.min(5_000_000, speed));
   document.getElementById('speedLabel').textContent = fmtSpeed(speedMultiplier);
