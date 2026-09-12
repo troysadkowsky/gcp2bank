@@ -1,6 +1,6 @@
-<Files "db_config.php">
+<FilesMatch "^(db_config|admin_secret)\.php$">
   Require all denied
-</Files>
+</FilesMatch>
 
 <FilesMatch "\.(html|php)$">
   Header set Cache-Control "no-cache, no-store, must-revalidate"

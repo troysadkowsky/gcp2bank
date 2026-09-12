@@ -41,7 +41,7 @@
   h1{ font-size: clamp(26px,4vw,38px); margin: 6px 0 8px; }
   .dek{ color: var(--ink-2); font-size:14px; max-width: 70ch; line-height:1.6; }
 
-  .about-viz{ margin-top:14px; max-width:70ch; }
+  .about-viz{ margin-top:14px; }
   .about-toggle{
     display:flex; align-items:center; gap:10px; background:none; border:none; padding:0;
     font-family:"IBM Plex Sans",sans-serif; font-size:13px; font-weight:600; color:var(--ink);
@@ -56,9 +56,9 @@
   .about-toggle .chev{ transition:transform 150ms ease; font-size:10px; }
   .about-toggle[aria-expanded="true"] .chev{ transform:rotate(180deg); }
   .about-content{ margin-top:14px; color:var(--ink-2); font-size:13.5px; line-height:1.65; }
-  .about-content p{ margin:0 0 12px; max-width:68ch; }
+  .about-content p{ margin:0 0 12px; }
   .about-content ul{ margin:0 0 20px; padding-left:20px; }
-  .about-content li{ margin-bottom:9px; max-width:66ch; }
+  .about-content li{ margin-bottom:9px; }
   .about-content li:last-child{ margin-bottom:0; }
   .about-content strong{ color:var(--ink); font-weight:600; }
   .about-h{
@@ -114,7 +114,7 @@
   .readout{ display:flex; flex-direction:column; gap:2px; margin-left:auto; text-align:right; }
   .readout .t{ font-family:"IBM Plex Mono",monospace; font-size:15px; }
   .readout .p{ font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--ink-2); }
-  .achieved{ font-size:11px; font-family:"IBM Plex Mono",monospace; }
+  .achieved{ font-size:11px; font-family:"IBM Plex Mono",monospace; max-width:220px; white-space:normal; line-height:1.4; }
   .achieved.limited{ color: var(--status-warning); }
   .achieved.ok{ color: var(--muted); }
 
@@ -139,11 +139,28 @@
   .scrubber-window{
     position:absolute; top:-3px; height:calc(100% + 6px); min-width:4px;
     background: rgba(255,255,255,0.14); border:1px solid rgba(255,255,255,0.4);
-    border-radius:3px; pointer-events:none; box-sizing:border-box;
+    border-radius:3px; pointer-events:auto; cursor:grab; box-sizing:border-box;
+  }
+  .scrubber-window:active{ cursor:grabbing;
   }
   .scrubber-ticks{ position:absolute; inset:0; pointer-events:none; }
   .scrubber-tick{ position:absolute; top:2px; bottom:2px; width:2px; border-radius:1px; opacity:0.9; }
   .scrubber-hint{ font-family:"IBM Plex Mono",monospace; font-size:10px; color:var(--muted); margin-top:5px; }
+
+  .gcp2-shoutout{
+    display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px;
+    background: var(--panel); border:1px solid var(--border); border-radius:6px;
+    padding:16px 20px; margin-bottom:22px;
+  }
+  .gcp2-shoutout-text{ color:var(--ink-2); font-size:13.5px; line-height:1.55; max-width:62ch; }
+  .gcp2-shoutout-text strong{ color:var(--ink); }
+  .gcp2-shoutout-link{
+    font-family:"IBM Plex Mono",monospace; font-size:12px; font-weight:600;
+    color: var(--page); background: var(--accent); border:1px solid var(--accent);
+    padding:9px 16px; border-radius:20px; white-space:nowrap; text-decoration:none;
+    flex:none;
+  }
+  .gcp2-shoutout-link:hover{ background: var(--accent-dim); border-color:var(--accent-dim); }
 
   .picker{
     display:flex; flex-wrap:wrap; gap:6px; margin-bottom:18px;
@@ -159,6 +176,13 @@
   .picker label:has(input:checked){ background: var(--accent); border-color:var(--accent); color:var(--page); }
 
   .bank{ display:flex; flex-direction:column; gap:8px; padding-bottom: 50px; }
+  .hover-tooltip{
+    position:fixed; z-index:20; pointer-events:none;
+    font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--ink);
+    background:var(--panel-2); border:1px solid var(--border); border-radius:4px;
+    padding:5px 9px; white-space:nowrap; box-shadow:0 4px 14px rgba(0,0,0,0.4);
+  }
+  .hover-tooltip .val{ color:var(--muted); margin-left:8px; }
   .monitor{
     background: var(--panel); border:1px solid var(--border); border-radius:4px;
     padding: 8px 14px 6px;
@@ -198,6 +222,26 @@
     0%{ transform:translateX(-100%); }
     100%{ transform:translateX(275%); }
   }
+  .monitor .declines{
+    grid-column: 1 / -1; margin-top:4px; padding-top:9px; border-top:1px solid var(--border);
+  }
+  .monitor .declines-toggle{
+    display:flex; align-items:center; gap:10px; background:none; border:none; padding:0;
+    font-family:"IBM Plex Mono",monospace; font-size:10px; text-transform:uppercase;
+    letter-spacing:.06em; color:var(--muted); cursor:pointer;
+  }
+  .monitor .declines-toggle:hover{ background:none; color:var(--ink-2); }
+  .monitor .declines-toggle .about-toggle-label{ font-size:10px; }
+  .monitor [data-declineslist]{ margin-top:8px; }
+  .decline-item{
+    display:flex; align-items:baseline; gap:10px; width:100%; text-align:left;
+    background:none; border:none; padding:4px 0; cursor:pointer;
+    font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--ink-2);
+  }
+  .decline-item:hover{ color:var(--ink); }
+  .decline-item .depth{ color:#f59e0b; font-weight:600; min-width:78px; flex:none; font-variant-numeric:tabular-nums; }
+  .decline-item .dates{ flex:1; }
+  .decline-item .dur{ color:var(--muted); flex:none; }
   @media (max-width: 640px){
     .monitor{ grid-template-columns: 1fr; }
   }
@@ -224,9 +268,9 @@
 <body>
 <div class="wrap">
   <header>
-    <div class="eyebrow">GCP2 &middot; live playback of historical readings &middot; v0.1.0.1</div>
+    <div class="eyebrow">GCP2 &middot; historical readings, March 2024 &ndash; September 2026 &middot; v0.1.0.12</div>
     <h1>Coherence Monitor Bank</h1>
-    <p class="dek">Every reading in this bank is fetched live from a 79.5-million-row MySQL table, batch by batch, and played back like a bank of heart-rate monitors. Push the speed past what the server can deliver and the sweep will tell you honestly.</p>
+    <p class="dek">Every reading in this bank is historical &mdash; recorded March 2024 through September 2026, played back from a 79.5-million-second record and styled like a bank of heart-rate monitors sweeping across it. Push the speed up to compress months into seconds, or slow down to watch a single moment unfold.</p>
 
     <div class="about-viz">
       <button id="aboutToggle" class="about-toggle" aria-expanded="false" aria-controls="aboutContent">
@@ -256,15 +300,25 @@
 
         <div class="about-h">The asymmetry of global events</div>
         <p>Because suppressed variance is capped at &minus;1.0, downward trends require long, persistent periods of calm or dispersed energy to visibly pull the cumulative total downward. In contrast, the unconstrained nature of excess correlation means a single, unified moment of global shock can spike the data by around 90 in one second &mdash; instantly erasing days of accumulated mathematical quiet.</p>
+
+        <div class="about-h">What counts as a &ldquo;notable&rdquo; decline</div>
+        <p>Each panel highlights a decline once the running total has pulled back meaningfully from its own recent high within the visible window &mdash; and every panel&rsquo;s Notable Decline Periods list (hidden by default; click to reveal it) is built the same way, just scanning that cluster&rsquo;s entire history instead of only what&rsquo;s on screen. Starting from each all-time high in the cumulative total, a period counts as a decline for as long as the total stays below that peak, ending only once a new high is reached. The five deepest such periods per cluster &mdash; ranked by total points lost from peak to trough &mdash; are what get listed, regardless of how long they took: a slow multi-month bleed and a sharp week-long plunge both count, just as different flavors of the same pattern.</p>
       </div>
     </div>
   </header>
+
+  <div class="gcp2-shoutout">
+    <div class="gcp2-shoutout-text">
+      <strong>Global Consciousness Project 2.0</strong> &mdash; a worldwide network of hardware random number generators exploring whether shared human attention leaves a trace on physical randomness. This bank plays back a historical mirror of their data. For their live, real-time network &mdash; or to learn more about the project and the science behind it &mdash; visit their site.
+    </div>
+    <a href="https://gcp2.net" target="_blank" rel="noopener" class="gcp2-shoutout-link">Visit gcp2.net &rarr;</a>
+  </div>
 
   <div class="picker" id="picker"></div>
 
   <div class="console">
     <div class="ctl">
-      <label>Transport</label>
+      <label>Playback</label>
       <div style="display:flex;gap:8px;">
         <button id="btnPlay">Play</button>
         <button id="btnReset" class="ghost">Reset</button>
@@ -277,6 +331,7 @@
         <div class="speed-actual-marker" id="speedActualMarker"></div>
         <div class="speed-target-handle" id="speedTargetHandle"></div>
       </div>
+      <div class="achieved ok" id="achievedSpeed">achieving requested speed</div>
     </div>
     <div class="ctl">
       <label>Window per sweep</label>
@@ -293,9 +348,8 @@
       </select>
     </div>
     <div class="readout">
-      <div class="t mono" id="simClock">2024-03-01 00:00:00 UTC</div>
+      <div class="t mono" id="windowRange">2024-03-01 00:00:00 UTC &rarr; 2024-03-01 00:00:00 UTC</div>
       <div class="p" id="simProgress">0.0% through 30 months</div>
-      <div class="achieved ok" id="achievedSpeed">achieving requested speed</div>
     </div>
   </div>
 
@@ -319,15 +373,16 @@
     <div class="ticks" id="axisTicks"></div>
   </div>
   <div class="bank" id="bank"></div>
+  <div class="hover-tooltip" id="hoverTooltip" hidden></div>
 
   <footer>
-    Data: Global Consciousness Project 2.0 (gcp2.net), independently mirrored &middot; each panel streams directly from <code>api/batch.php</code> in pages of up to 20,000 rows, buffered ahead of the sweep so playback speed is decoupled from per-request latency &mdash; until the fetch pipeline can't keep up, at which point the clock itself slows to match.
+    Data: Global Consciousness Project 2.0 (gcp2.net), independently mirrored.
   </footer>
 </div>
 
 <script>
 const API = 'api/';
-const BUILD_VERSION = '0.1.0.1'; // bump on every deploy — forces fresh fetches past any stale cache
+const BUILD_VERSION = '0.1.0.12'; // bump on every deploy — forces fresh fetches past any stale cache
 const DATASET_START = Date.parse('2024-03-01T00:00:00Z');
 const DATASET_END   = Date.parse('2026-09-07T23:59:59Z');
 const N_COLS = 480; // rendering resolution per monitor
@@ -345,6 +400,11 @@ function hexToRgb(hex){
   const n = parseInt(hex.slice(1), 16);
   return [(n>>16)&255, (n>>8)&255, n&255];
 }
+// A reserved, cluster-independent "state" color for a notable decline — a warm
+// caution amber, distinct from every categorical series hue and from the red
+// reserved for "no data," chosen specifically to draw the eye since that's the
+// point of highlighting these stretches at all.
+const DECLINE_RGB = [245,158,11];
 
 let WINDOW_MS = DEFAULT_WINDOW_MS;
 let clustersMeta = [];
@@ -354,6 +414,7 @@ let simTime = DATASET_START;
 // true only until the user first presses Play or touches the scrubber — gates the
 // forward-looking start-of-timeline preview (see Monitor.loadForwardPreview)
 let neverInteracted = true;
+let hoverColIdx = null; // shared across every panel — they all share the same time axis, so one crosshair position applies to all of them at once
 let speedMultiplier = speedFromSlider(DEFAULT_SPEED_SLIDER_POS); // user-set target/ceiling
 let effectiveSpeed = speedMultiplier; // actual speed in use, auto-throttled toward what fetches can sustain
 let lastFrameWall = null;
@@ -386,6 +447,18 @@ function fmtSpeed(s){
   if(s < 1000) return Math.round(s)+'×';
   if(s < 1_000_000) return (s/1000).toFixed(1)+'K×';
   return (s/1_000_000).toFixed(2)+'M×';
+}
+// Maps a hovered column index (0..N_COLS-1) back to the absolute timestamp it
+// represents — mirrors the same leftAbsCol logic each panel's draw() uses to
+// place columns, so the crosshair and its readout always agree with what's on
+// screen, in whichever mode (trailing playback vs. the start-of-timeline
+// forward preview) is currently active.
+function hoveredColTimestamp(colIdx){
+  const colDurationMs = WINDOW_MS/N_COLS;
+  const currentAbsCol = Math.floor((simTime-DATASET_START)/colDurationMs);
+  const showForwardPreview = neverInteracted && currentAbsCol < N_COLS-1;
+  const leftAbsCol = showForwardPreview ? 0 : currentAbsCol - N_COLS + 1;
+  return DATASET_START + (leftAbsCol+colIdx)*colDurationMs;
 }
 function fmtClock(ms){
   const d = new Date(ms);
@@ -457,6 +530,8 @@ class Monitor{
     // usable Content-Length — show an indeterminate animation then, not a stuck 0%.
     this.loading = false;
     this.loadingPct = null;
+    this.loadingStartedAt = null; // wall-clock time `loading` was last set true — see the staleness guard in draw()
+    this.declines = []; // top historical drawdown periods for this cluster (see loadDeclines)
     this.consumedUpTo = DATASET_START;
     this.lastValue = null;
     this.lastDevices = null;
@@ -489,6 +564,13 @@ class Monitor{
         <div class="axis-labels" data-axislabels></div>
         <div class="status-overlay" data-status></div>
         <div class="status-bar" data-statusbar><div class="status-bar-fill" data-statusbarfill></div></div>
+      </div>
+      <div class="declines" data-declines hidden>
+        <button class="declines-toggle" data-declinestoggle aria-expanded="false">
+          <span>Notable decline periods</span>
+          <span class="about-toggle-label" data-declinestogglelabel>Show<span class="chev">&#9662;</span></span>
+        </button>
+        <div data-declineslist hidden></div>
       </div>`;
     this.dom = el;
     this.canvas = el.querySelector('canvas');
@@ -499,7 +581,17 @@ class Monitor{
     this.statusEl = el.querySelector('[data-status]');
     this.axisLabelsEl = el.querySelector('[data-axislabels]');
     this.statusBarEl = el.querySelector('[data-statusbar]');
+    this.declinesEl = el.querySelector('[data-declines]');
+    this.declinesListEl = el.querySelector('[data-declineslist]');
     this.statusBarFillEl = el.querySelector('[data-statusbarfill]');
+    el.querySelector('[data-declinestoggle]').addEventListener('click', (e)=>{
+      const btn = e.currentTarget;
+      const expanded = btn.getAttribute('aria-expanded') === 'true';
+      btn.setAttribute('aria-expanded', String(!expanded));
+      this.declinesListEl.hidden = expanded;
+      btn.querySelector('[data-declinestogglelabel]').innerHTML = expanded
+        ? 'Show<span class="chev">&#9662;</span>' : 'Hide<span class="chev">&#9662;</span>';
+    });
   }
   reset(){
     this.buffer = []; this.cursorTs = null; this.exhausted = false;
@@ -617,7 +709,7 @@ class Monitor{
     const nominalBuckets = Math.ceil((simTime - windowStart)/1000/Math.max(bucket,1));
     const limit = Math.min(100000, Math.max(1000, nominalBuckets + Math.ceil(nominalBuckets*0.15) + 50));
     const before = encodeURIComponent(toMysqlDt(simTime));
-    this.loading = true; this.loadingPct = null;
+    this.loading = true; this.loadingPct = null; this.loadingStartedAt = Date.now();
     try{
       const url = `${API}batch.php?cluster=${this.meta.id}&after=${encodeURIComponent(this.cursorTs)}&before=${before}&limit=${limit}&bucket=${bucket}&v=${BUILD_VERSION}`;
       const rows = await queuedFetch(url, (recv,total)=>{
@@ -635,6 +727,29 @@ class Monitor{
     if(gen === this.fetchGen) this.loading = false;
     this.fetching = false;
   }
+  // Fetches this cluster's biggest historical drawdown periods (server-side scan
+  // over the small hourly rollup, see api/declines.php) so viewers can jump
+  // straight to a notable decline instead of hunting for one by scrubbing.
+  async loadDeclines(){
+    try{
+      const res = await fetch(`${API}declines.php?cluster=${this.meta.id}&limit=5&v=${BUILD_VERSION}`);
+      this.declines = await res.json();
+    }catch(e){ this.declines = []; }
+    this.renderDeclines();
+  }
+  renderDeclines(){
+    if(!Array.isArray(this.declines) || !this.declines.length){ this.declinesEl.hidden = true; return; }
+    this.declinesEl.hidden = false;
+    this.declinesListEl.innerHTML = this.declines.map((d,i)=>{
+      const peakDate = fmtClock(d.peak_ts).slice(0,10);
+      const troughDate = fmtClock(d.trough_ts).slice(0,10);
+      const durText = d.duration_hours >= 48 ? `${Math.round(d.duration_hours/24)}d` : `${Math.round(d.duration_hours)}h`;
+      return `<button class="decline-item" data-idx="${i}"><span class="depth">&minus;${d.depth.toFixed(1)}</span><span class="dates">${peakDate} &rarr; ${troughDate}</span><span class="dur">${durText}</span></button>`;
+    }).join('');
+    this.declinesListEl.querySelectorAll('.decline-item').forEach(btn=>{
+      btn.addEventListener('click', ()=> jumpToDecline(this.declines[+btn.dataset.idx]));
+    });
+  }
   // Resting exactly at DATASET_START, the normal trailing window (behind simTime)
   // is empty by definition. Rather than leave a fresh page load blank, preview the
   // first WINDOW_MS of real data forward from DATASET_START — read-only, and kept
@@ -648,7 +763,7 @@ class Monitor{
     const bucket = bucketSecondsForWindow(WINDOW_MS);
     const nominalBuckets = Math.ceil((previewEnd - DATASET_START)/1000/Math.max(bucket,1));
     const limit = Math.min(100000, Math.max(1000, nominalBuckets + Math.ceil(nominalBuckets*0.15) + 50));
-    this.loading = true; this.loadingPct = null;
+    this.loading = true; this.loadingPct = null; this.loadingStartedAt = Date.now();
     try{
       const after = encodeURIComponent(toMysqlDt(DATASET_START - 1000));
       const before = encodeURIComponent(toMysqlDt(previewEnd));
@@ -761,6 +876,7 @@ class Monitor{
       // 30-month scrubber (matching this panel's color) instead of here
       this.statusEl.textContent = '';
       this.statusEl.className = 'status-overlay';
+      this.drawHoverCrosshair(ctx,W,H,colW);
       return;
     }
     if(offlineAfter){
@@ -776,6 +892,7 @@ class Monitor{
       this.devEl.textContent = this.lastDevices!=null ? this.lastDevices+' devices' : '— devices';
       this.statusEl.textContent = '';
       this.statusEl.className = 'status-overlay';
+      this.drawHoverCrosshair(ctx,W,H,colW);
       return;
     }
 
@@ -810,9 +927,22 @@ class Monitor{
       const x = i*colW;
       // a gap just means the total held flat here — it still renders as part of the same continuous line
       const mn = this.ringMinMax[slot*2], mx = this.ringMinMax[slot*2+1];
-      path.push([x, yOf(mn), yOf(mx)]);
+      path.push([x, yOf(mn), yOf(mx), mx]); // mx kept in raw data units too, for drawdown tracking below
     }
-    if(path.length) this.strokeAreaPath(ctx,path,H);
+    // A stretch reads as "declining" once it has pulled back meaningfully (12% of
+    // the visible range) from its own most recent high within this window — a
+    // running peak-to-current drawdown, the same underlying idea as the notable-
+    // declines list below, just computed live against whatever's currently on
+    // screen instead of the whole history.
+    if(path.length){
+      const declineThreshold = (visMax-visMin) * 0.12;
+      let peak = -Infinity;
+      const declining = path.map(([,,,mx])=>{
+        if(mx > peak) peak = mx;
+        return (peak - mx) > declineThreshold;
+      });
+      this.strokeAreaPath(ctx,path,H,declining);
+    }
 
     // "now" edge
     ctx.strokeStyle = 'rgba(144,133,233,0.6)';
@@ -823,10 +953,25 @@ class Monitor{
     this.valEl.textContent = this.runningTotal.toFixed(2);
     this.rawEl.textContent = 'last reading: ' + (this.lastValue!=null ? this.lastValue.toFixed(3) : '—');
     this.devEl.textContent = this.lastDevices!=null ? this.lastDevices+' devices' : '— devices';
+    // Belt-and-suspenders: `loading` is cleared by whichever renderStaticWindow()/
+    // loadForwardPreview() call set it, guarded by a generation check so a stale
+    // response can't overwrite fresher state — but that same guard means if a
+    // *newer* call's own fetch never resolves cleanly for some reason, nothing is
+    // left to clear the flag its predecessor set. Rather than track down every
+    // possible interleaving, just bound how long "loading" is ever allowed to
+    // stand without a real fetch backing it up.
+    if(this.loading && this.loadingStartedAt && (Date.now()-this.loadingStartedAt > 30000)){
+      this.loading = false; this.loadingPct = null;
+    }
+    // Once there's genuinely nothing left to wait for — the dataset (or this
+    // cluster's own coverage) has actually run out, not just a thin runway
+    // ensureBuffer hasn't caught up on yet — the buffering fallback below must
+    // not fire, or it reads "loading…" forever with nothing left to load.
+    const expectingMore = !this.exhausted && simTime < DATASET_END && (this.lastTs==null || simTime < this.lastTs);
     if(this.loading){
       this.statusEl.textContent = this.loadingPct!=null ? `loading… ${this.loadingPct}%` : 'loading…';
       this.statusEl.className = 'status-overlay buffering';
-    } else if(this.bufferReachMs()-this.consumedUpTo < 500){
+    } else if(expectingMore && this.bufferReachMs()-this.consumedUpTo < 500){
       this.statusEl.textContent = 'loading…';
       this.statusEl.className = 'status-overlay buffering';
     } else {
@@ -834,6 +979,23 @@ class Monitor{
       this.statusEl.className = 'status-overlay';
     }
     this.updateLoadingBar();
+    this.drawHoverCrosshair(ctx,W,H,colW);
+  }
+  // A thin vertical line at the shared hover column, drawn on every panel so a
+  // reader can line up the exact same moment across every cluster at once —
+  // they're all on the same time axis, so one hover position means the same
+  // thing everywhere. Paired with the page-level tooltip showing the exact
+  // date/time (see setupHoverCrosshair) for whoever wants the precise instant
+  // a decline (or anything else) starts.
+  drawHoverCrosshair(ctx, W, H, colW){
+    if(hoverColIdx == null) return;
+    const x = hoverColIdx*colW + colW/2;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke();
+    ctx.restore();
   }
   // Reflects this.loading/loadingPct onto the small bar under the status text —
   // a real byte-progress fill when the response carried a Content-Length, an
@@ -871,9 +1033,17 @@ class Monitor{
     for(let i=0;i<N_COLS;i++){
       const mn = this.previewMinMax[i*2], mx = this.previewMinMax[i*2+1];
       if(isNaN(mn)) continue;
-      path.push([i*colW, yOf(mn), yOf(mx)]);
+      path.push([i*colW, yOf(mn), yOf(mx), mx]);
     }
-    if(path.length) this.strokeAreaPath(ctx,path,H);
+    if(path.length){
+      const declineThreshold = (visMax-visMin) * 0.12;
+      let peak = -Infinity;
+      const declining = path.map(([,,,mx])=>{
+        if(mx > peak) peak = mx;
+        return (peak - mx) > declineThreshold;
+      });
+      this.strokeAreaPath(ctx,path,H,declining);
+    }
 
     const nowX = Math.max(0, Math.min(W-1, currentAbsCol*colW));
     ctx.strokeStyle = 'rgba(144,133,233,0.6)';
@@ -888,27 +1058,69 @@ class Monitor{
     }
     this.statusEl.textContent = '';
     this.statusEl.className = 'status-overlay';
+    this.drawHoverCrosshair(ctx,W,H,colW);
   }
   // draws one contiguous run of columns as a line (using each column's max, the "high" side of
-  // its min/max range) with a translucent fill down to the bottom — financial-chart area style
-  strokeAreaPath(ctx, path, H){
+  // its min/max range) with a translucent fill down to the bottom — financial-chart area style.
+  // `declining` (optional): a boolean per path point marking a notable pullback from its own
+  // recent high (see the drawdown scan above both call sites). The identity fill/line still run
+  // the full width underneath in the cluster's own color, but declining stretches get a second,
+  // amber wash on top plus a heavier line — a deliberately bigger visual change than just a
+  // line-color swap, since the point is for a prolonged downturn to actually catch the eye.
+  strokeAreaPath(ctx, path, H, declining){
     const [r,g,b] = this.colorRgb;
-    ctx.beginPath();
-    ctx.moveTo(path[0][0], path[0][2]);
-    for(const [x,,yMax] of path) ctx.lineTo(x, yMax);
-    ctx.strokeStyle = `rgba(${r},${g},${b},0.95)`;
-    ctx.lineWidth = 1.6;
-    ctx.stroke();
-
-    const last = path[path.length-1];
-    ctx.lineTo(last[0], H);
-    ctx.lineTo(path[0][0], H);
-    ctx.closePath();
+    const areaPath = () => {
+      ctx.beginPath();
+      ctx.moveTo(path[0][0], path[0][2]);
+      for(const [x,,yMax] of path) ctx.lineTo(x, yMax);
+      const last = path[path.length-1];
+      ctx.lineTo(last[0], H);
+      ctx.lineTo(path[0][0], H);
+      ctx.closePath();
+    };
+    areaPath();
     const grad = ctx.createLinearGradient(0,0,0,H);
     grad.addColorStop(0, `rgba(${r},${g},${b},0.22)`);
     grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
     ctx.fillStyle = grad;
     ctx.fill();
+
+    if(!declining){
+      areaPath();
+      ctx.strokeStyle = `rgba(${r},${g},${b},0.95)`;
+      ctx.lineWidth = 1.6;
+      ctx.stroke();
+      return;
+    }
+    const [dr,dg,db] = DECLINE_RGB;
+    // contiguous same-state runs (each starting one point early so adjacent runs
+    // still connect, with no visual gap at the color/width switch)
+    let i = 0;
+    while(i < path.length){
+      const state = declining[i];
+      let j = i;
+      while(j < path.length && declining[j] === state) j++;
+      const segEnd = Math.min(j+1, path.length);
+      if(state){
+        // amber wash over this stretch, on top of the identity fill — a second,
+        // more visible layer rather than relying on the line alone
+        ctx.beginPath();
+        ctx.moveTo(path[i][0], path[i][2]);
+        for(let k=i+1;k<segEnd;k++) ctx.lineTo(path[k][0], path[k][2]);
+        ctx.lineTo(path[Math.min(segEnd,path.length)-1][0], H);
+        ctx.lineTo(path[i][0], H);
+        ctx.closePath();
+        ctx.fillStyle = `rgba(${dr},${dg},${db},0.16)`;
+        ctx.fill();
+      }
+      ctx.beginPath();
+      ctx.moveTo(path[i][0], path[i][2]);
+      for(let k=i+1;k<segEnd;k++) ctx.lineTo(path[k][0], path[k][2]);
+      ctx.strokeStyle = state ? `rgba(${dr},${dg},${db},1)` : `rgba(${r},${g},${b},0.95)`;
+      ctx.lineWidth = state ? 2.4 : 1.6;
+      ctx.stroke();
+      i = j;
+    }
   }
 }
 
@@ -934,7 +1146,22 @@ function addMonitor(meta){
   monitors.set(meta.id, m);
   document.getElementById('bank').appendChild(m.dom);
   if(!playing) m.renderStaticWindow();
+  m.loadDeclines();
   updateStartTicks();
+}
+// Window presets (must match the <select> options) — picks the smallest one that
+// comfortably fits a decline period, so clicking one shows it with a bit of
+// context on either side rather than filling the window edge-to-edge.
+const WINDOW_PRESETS = [60000,3600000,86400000,604800000,2592000000,7776000000,15552000000,31536000000,79574400000];
+function jumpToDecline(d){
+  neverInteracted = false;
+  const desired = (d.trough_ts - d.peak_ts) * 1.3;
+  WINDOW_MS = WINDOW_PRESETS.find(p => p >= desired) ?? WINDOW_PRESETS[WINDOW_PRESETS.length-1];
+  document.getElementById('windowSelect').value = String(WINDOW_MS);
+  playing = false; updatePlayButton();
+  seekTo(d.trough_ts);
+  for(const m of monitors.values()) m.renderStaticWindow();
+  updateAxisTicks();
 }
 function removeMonitor(id){
   const m = monitors.get(id);
@@ -1019,7 +1246,10 @@ function updateWindowRegion(pct){
   el.style.width = widthPct+'%';
 }
 function updateReadout(){
-  document.getElementById('simClock').textContent = fmtClock(simTime);
+  // combined start → end readout for the currently visible window — dragging the
+  // scrubber box (see setupWindowBoxDrag) is the only way to change either end
+  const windowStart = Math.max(DATASET_START, simTime - WINDOW_MS);
+  document.getElementById('windowRange').textContent = fmtClock(windowStart) + ' → ' + fmtClock(simTime);
   const pct = (simTime-DATASET_START)/(DATASET_END-DATASET_START)*100;
   document.getElementById('simProgress').textContent = pct.toFixed(3)+'% through 30 months';
   if(!scrubbing){
@@ -1093,7 +1323,75 @@ function seekTo(ms){
     window.addEventListener('pointerup', onUp);
   });
 })();
-
+// Dragging the window-region box itself (rather than clicking/dragging the bare
+// track) is a "leash": the box slides freely as a preview, but the actual scrub
+// position stays frozen wherever it was — until the box's leading edge (in the
+// direction of the drag) reaches that frozen position, at which point the
+// position starts sliding along with the box from then on. Net effect: up to one
+// window-width of "look ahead" (or "look behind") before anything commits to
+// actually moving. A single clamp of the frozen position into the box's current
+// [left,right] span produces this automatically and asymmetrically — dragging
+// away from the edge the position already sits against (forward, since the box
+// starts with its right edge at the handle) gets the full leash; dragging the
+// other way gets none, since the handle is already right at that boundary.
+(function setupWindowBoxDrag(){
+  const boxEl = document.getElementById('scrubberWindow');
+  const trackEl = document.getElementById('scrubber');
+  let startClientX = 0, frozenHandle = 0, wasPlaying = false, lastCommitted = null, lastBoxLeft = 0;
+  function msPerPx(){
+    const rect = trackEl.getBoundingClientRect();
+    return (DATASET_END-DATASET_START)/rect.width;
+  }
+  function onMove(e){
+    const deltaMs = (e.clientX-startClientX)*msPerPx();
+    const W = WINDOW_MS;
+    const boxLeft = frozenHandle - W + deltaMs;
+    const boxRight = boxLeft + W;
+    const newHandle = Math.max(boxLeft, Math.min(boxRight, frozenHandle));
+    simTime = Math.max(DATASET_START, Math.min(DATASET_END, newHandle));
+    lastBoxLeft = boxLeft;
+    if(simTime !== lastCommitted){
+      for(const m of monitors.values()) m.seek(simTime);
+      lastCommitted = simTime;
+    }
+    const span = DATASET_END-DATASET_START;
+    boxEl.style.left = ((boxLeft-DATASET_START)/span*100)+'%';
+    boxEl.style.width = (W/span*100)+'%';
+    const handlePct = (simTime-DATASET_START)/span*100;
+    document.getElementById('scrubberHandle').style.left = handlePct+'%';
+    document.getElementById('scrubberFill').style.width = handlePct+'%';
+  }
+  function onUp(){
+    scrubbing = false;
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onUp);
+    playing = wasPlaying;
+    updatePlayButton();
+    lastFrameWall = null;
+    // The leash only governs what happens *during* the drag (so dragging doesn't
+    // refetch on every pixel of movement before it's earned); the drop point
+    // itself always commits to wherever the box ended up — its right edge — even
+    // if that's still short of where the leash would have caught the handle up.
+    // Snapping back to the pre-drag position here would silently discard a drop
+    // that never crossed the leash threshold, which isn't what dropping means.
+    seekTo(lastBoxLeft + WINDOW_MS);
+    if(!playing) for(const m of monitors.values()) m.renderStaticWindow();
+    updateAxisTicks();
+  }
+  boxEl.addEventListener('pointerdown', e=>{
+    e.stopPropagation(); // this is a distinct gesture from the track's click-anywhere-to-jump
+    neverInteracted = false;
+    scrubbing = true;
+    wasPlaying = playing;
+    playing = false;
+    frozenHandle = simTime;
+    lastCommitted = simTime;
+    lastBoxLeft = simTime - WINDOW_MS;
+    startClientX = e.clientX;
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  });
+})();
 document.getElementById('btnPlay').addEventListener('click', ()=>{
   neverInteracted = false;
   playing = !playing;
@@ -1120,6 +1418,54 @@ document.getElementById('btnReset').addEventListener('click', ()=>{
     content.hidden = expanded;
     label.innerHTML = expanded ? 'Show more<span class="chev">&#9662;</span>' : 'Show less<span class="chev">&#9662;</span>';
   });
+})();
+// Reads a monitor's own value at a given hovered column, mirroring whichever
+// rendering path (trailing playback vs. the start-of-timeline forward preview)
+// its own draw() is currently using — so the tooltip always matches what that
+// panel is actually showing at that x position.
+function valueAtColumn(m, colIdx){
+  const colDurationMs = WINDOW_MS/N_COLS;
+  const currentAbsCol = Math.floor((simTime-DATASET_START)/colDurationMs);
+  const offlineBefore = m.firstTs!=null && simTime < m.firstTs;
+  const offlineAfter = m.lastTs!=null && simTime > m.lastTs;
+  const showForwardPreview = neverInteracted && !offlineBefore && !offlineAfter && currentAbsCol < N_COLS-1;
+  if(showForwardPreview){
+    const mx = m.previewMinMax[colIdx*2+1];
+    return isNaN(mx) ? null : mx;
+  }
+  if(offlineBefore || offlineAfter) return null;
+  const leftAbsCol = currentAbsCol - N_COLS + 1;
+  const absCol = leftAbsCol + colIdx;
+  const slot = ((absCol%N_COLS)+N_COLS)%N_COLS;
+  if(m.ringColIndex[slot] !== absCol) return null;
+  return m.ringMinMax[slot*2+1];
+}
+(function setupHoverCrosshair(){
+  const bank = document.getElementById('bank');
+  const tooltip = document.getElementById('hoverTooltip');
+  function handleMove(e){
+    const canvas = e.target.closest ? e.target.closest('canvas') : null;
+    if(!canvas){ hoverColIdx = null; tooltip.hidden = true; return; }
+    const rect = canvas.getBoundingClientRect();
+    const frac = Math.max(0, Math.min(1, (e.clientX-rect.left)/rect.width));
+    hoverColIdx = Math.max(0, Math.min(N_COLS-1, Math.floor(frac*N_COLS)));
+    const ts = hoveredColTimestamp(hoverColIdx);
+    let valHtml = '';
+    for(const m of monitors.values()){
+      if(m.canvas === canvas){
+        const v = valueAtColumn(m, hoverColIdx);
+        if(v != null) valHtml = `<span class="val">${v.toFixed(2)}</span>`;
+        break;
+      }
+    }
+    tooltip.innerHTML = fmtClock(ts) + valHtml;
+    tooltip.hidden = false;
+    tooltip.style.left = Math.min(e.clientX+14, window.innerWidth-220)+'px';
+    tooltip.style.top = Math.max(e.clientY-32, 4)+'px';
+  }
+  function handleLeave(){ hoverColIdx = null; tooltip.hidden = true; }
+  bank.addEventListener('pointermove', handleMove);
+  bank.addEventListener('pointerleave', handleLeave);
 })();
 function setTargetSpeed(speed){
   speedMultiplier = Math.max(1, Math.min(5_000_000, speed));
