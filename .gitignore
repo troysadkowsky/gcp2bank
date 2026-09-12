@@ -1,0 +1,8 @@
+# secrets — never commit real values, see the .example.php files
+db_config.php
+admin_secret.php
+
+# raw/compressed data files, loaded onto the server separately via FTP
+/data/
+
+.DS_Store

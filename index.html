@@ -1,0 +1,1096 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Coherence Monitor Bank</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,500;1,500&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root{
+    color-scheme: dark;
+    --page: #08080b;
+    --panel: #101014;
+    --panel-2: #16161c;
+    --ink: #f2f1f6;
+    --ink-2: #9c9aa8;
+    --muted: #5f5d6b;
+    --border: rgba(255,255,255,0.08);
+    --accent: #9085e9;
+    --accent-dim: #4a3aa7;
+    --trace: #6ee7c8;
+    --trace-dim: #1f6b57;
+    --status-warning: #fab219;
+    --status-critical: #d03b3b;
+  }
+  *{box-sizing:border-box;}
+  html,body{ margin:0; }
+  body{
+    background: var(--page);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    padding-inline: 20px;
+  }
+  .wrap{ max-width: 1360px; margin-inline:auto; }
+  h1{ font-family:"Newsreader", Georgia, serif; font-weight:500; font-style: italic; }
+  .mono{ font-family:"IBM Plex Mono", ui-monospace, monospace; }
+  a{ color: var(--accent); }
+
+  header{ padding-block: 28px 18px; border-bottom:1px solid var(--border); }
+  .eyebrow{ font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--accent); }
+  h1{ font-size: clamp(26px,4vw,38px); margin: 6px 0 8px; }
+  .dek{ color: var(--ink-2); font-size:14px; max-width: 70ch; line-height:1.6; }
+
+  .console{
+    display:flex; flex-wrap:wrap; gap: 18px; align-items:center;
+    background: var(--panel); border:1px solid var(--border); border-radius:4px;
+    padding: 16px 20px; margin-block: 18px;
+  }
+  .ctl{ display:flex; flex-direction:column; gap:4px; }
+  .ctl label{ font-family:"IBM Plex Mono",monospace; font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
+  button{
+    font-family:"IBM Plex Sans",sans-serif; font-weight:600; font-size:13px;
+    background: var(--accent-dim); color:#fff; border:1px solid var(--accent);
+    padding: 9px 18px; border-radius:3px; cursor:pointer;
+  }
+  button:hover{ background: var(--accent); }
+  button.ghost{ background:transparent; color:var(--ink-2); border-color:var(--border); }
+  button.ghost:hover{ color:var(--ink); border-color:var(--ink-2); }
+  .speed-track{
+    position:relative; width:220px; height:14px; border-radius:7px;
+    background: var(--panel-2); border:1px solid var(--border);
+    cursor:pointer; touch-action:none;
+  }
+  .speed-fill{
+    position:absolute; top:0; left:0; height:100%; width:0%;
+    background: rgba(110,231,200,0.35); border-radius:7px 0 0 7px;
+    pointer-events:none;
+  }
+  .speed-actual-marker{
+    position:absolute; top:50%; left:0%; width:3px; height:18px;
+    background: var(--trace); transform: translate(-50%,-50%);
+    pointer-events:none; border-radius:2px;
+  }
+  .speed-target-handle{
+    position:absolute; top:50%; left:0%; width:14px; height:14px;
+    background: var(--accent); border:2px solid var(--ink);
+    border-radius:50%; transform: translate(-50%,-50%);
+    pointer-events:none; box-shadow: 0 0 0 3px rgba(144,133,233,0.25);
+  }
+  .speed-track:hover .speed-target-handle{ background: var(--ink); }
+  select{
+    font-family:"IBM Plex Mono",monospace; font-size:12.5px;
+    background: var(--panel-2); color: var(--ink); border:1px solid var(--border);
+    padding: 8px 10px; border-radius:3px;
+  }
+  .speed-val{ font-family:"IBM Plex Mono",monospace; font-size:15px; font-weight:600; color:var(--accent); min-width:100px; }
+  .readout{ display:flex; flex-direction:column; gap:2px; margin-left:auto; text-align:right; }
+  .readout .t{ font-family:"IBM Plex Mono",monospace; font-size:15px; }
+  .readout .p{ font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--ink-2); }
+  .achieved{ font-size:11px; font-family:"IBM Plex Mono",monospace; }
+  .achieved.limited{ color: var(--status-warning); }
+  .achieved.ok{ color: var(--muted); }
+
+  .scrubber-wrap{ padding-block: 4px 2px; }
+  .scrubber{
+    position:relative; height:14px; border-radius:7px;
+    background: var(--panel-2); border:1px solid var(--border);
+    cursor: pointer; touch-action:none;
+  }
+  .scrubber-fill{
+    position:absolute; top:0; left:0; height:100%; width:0%;
+    background: var(--accent-dim); border-radius:7px 0 0 7px;
+    pointer-events:none;
+  }
+  .scrubber-handle{
+    position:absolute; top:50%; left:0%; width:14px; height:14px;
+    background: var(--accent); border:2px solid var(--ink);
+    border-radius:50%; transform: translate(-50%,-50%);
+    pointer-events:none; box-shadow: 0 0 0 3px rgba(144,133,233,0.25);
+  }
+  .scrubber:hover .scrubber-handle{ background: var(--ink); }
+  .scrubber-window{
+    position:absolute; top:-3px; height:calc(100% + 6px); min-width:4px;
+    background: rgba(255,255,255,0.14); border:1px solid rgba(255,255,255,0.4);
+    border-radius:3px; pointer-events:none; box-sizing:border-box;
+  }
+  .scrubber-ticks{ position:absolute; inset:0; pointer-events:none; }
+  .scrubber-tick{ position:absolute; top:2px; bottom:2px; width:2px; border-radius:1px; opacity:0.9; }
+  .scrubber-hint{ font-family:"IBM Plex Mono",monospace; font-size:10px; color:var(--muted); margin-top:5px; }
+
+  .picker{
+    display:flex; flex-wrap:wrap; gap:6px; margin-bottom:18px;
+  }
+  .picker label{
+    font-family:"IBM Plex Mono",monospace; font-size:11px;
+    border:1px solid var(--border); border-radius:20px; padding:5px 12px;
+    cursor:pointer; color:var(--ink-2); user-select:none;
+    display:inline-flex; align-items:center; gap:6px;
+  }
+  .picker input{ display:none; }
+  .picker input:checked ~ span{ color: var(--page); }
+  .picker label:has(input:checked){ background: var(--accent); border-color:var(--accent); color:var(--page); }
+
+  .bank{ display:flex; flex-direction:column; gap:8px; padding-bottom: 50px; }
+  .monitor{
+    background: var(--panel); border:1px solid var(--border); border-radius:4px;
+    padding: 8px 14px 6px;
+    display:grid; grid-template-columns: 150px 1fr; align-items:center; gap:14px;
+  }
+  .monitor .head{ display:flex; flex-direction:column; gap:2px; }
+  .monitor .name{ font-size:12.5px; font-weight:600; display:flex; align-items:center; gap:7px; }
+  .swatch{ width:8px; height:8px; border-radius:50%; flex:none; }
+  .monitor .val{ font-family:"IBM Plex Mono",monospace; font-size:18px; font-weight:600; color: var(--trace); font-variant-numeric: tabular-nums; }
+  .monitor .raw{ font-family:"IBM Plex Mono",monospace; font-size:10.5px; color:var(--ink-2); font-variant-numeric: tabular-nums; }
+  .monitor .chartcol{ position:relative; }
+  .monitor canvas{ width:100%; height:64px; display:block; background: var(--panel-2); border-radius:2px; }
+  .monitor .foot{ margin-top:3px; font-family:"IBM Plex Mono",monospace; font-size:10px; color:var(--muted); }
+  .monitor .axis-labels{
+    position:absolute; top:0; right:6px; height:100%;
+    display:flex; flex-direction:column; justify-content:space-between;
+    padding-block:2px; pointer-events:none;
+    font-family:"IBM Plex Mono",monospace; font-size:9.5px; color:var(--muted);
+  }
+  .monitor .status-overlay{
+    position:absolute; top:6px; left:10px;
+    font-family:"IBM Plex Mono",monospace; font-size:10.5px; color:var(--muted);
+    pointer-events:none;
+  }
+  .monitor .buffering{ color: var(--status-warning); }
+  .monitor .offline{ color: rgba(208,59,59,0.85); }
+  .monitor .status-bar{
+    position:absolute; top:21px; left:10px; width:110px; height:3px;
+    background:rgba(255,255,255,0.12); border-radius:2px; overflow:hidden;
+    pointer-events:none; display:none;
+  }
+  .monitor .status-bar.active{ display:block; }
+  .monitor .status-bar-fill{ height:100%; width:0%; background:var(--trace); border-radius:2px; }
+  .monitor .status-bar.indeterminate .status-bar-fill{
+    width:40%; animation: statusBarSlide 1.1s ease-in-out infinite;
+  }
+  @keyframes statusBarSlide{
+    0%{ transform:translateX(-100%); }
+    100%{ transform:translateX(275%); }
+  }
+  @media (max-width: 640px){
+    .monitor{ grid-template-columns: 1fr; }
+  }
+  .axis-row{
+    display:grid; grid-template-columns: 150px 1fr; gap:14px; align-items:center;
+    font-family:"IBM Plex Mono",monospace; font-size:10px; color:var(--muted);
+    padding: 0 14px 6px; margin-top: -4px;
+  }
+  .band-legend{
+    display:flex; flex-wrap:wrap; gap:16px; align-items:center;
+    font-family:"IBM Plex Mono",monospace; font-size:10.5px; color:var(--ink-2);
+    padding: 0 14px 8px;
+  }
+  .band-legend span{ display:flex; align-items:center; gap:6px; }
+  .band-legend i{ width:12px; height:12px; border-radius:2px; display:inline-block; }
+  .band-legend .note{ color:var(--muted); font-style:italic; }
+  .axis-row .ticks{ display:flex; justify-content:space-between; }
+  .axis-row .ticks span:last-child{ color: var(--accent); font-weight:600; }
+  @media (max-width: 640px){ .axis-row{ grid-template-columns: 1fr; } }
+
+  footer{ color:var(--muted); font-size:12px; padding-block:20px 40px; border-top:1px solid var(--border); line-height:1.7; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">GCP2 &middot; live playback of historical readings &middot; v0.0.14.0</div>
+    <h1>Coherence Monitor Bank</h1>
+    <p class="dek">Every reading in this bank is fetched live from a 79.5-million-row MySQL table, batch by batch, and played back like a bank of heart-rate monitors. Push the speed past what the server can deliver and the sweep will tell you honestly.</p>
+  </header>
+
+  <div class="picker" id="picker"></div>
+
+  <div class="console">
+    <div class="ctl">
+      <label>Transport</label>
+      <div style="display:flex;gap:8px;">
+        <button id="btnPlay">Play</button>
+        <button id="btnReset" class="ghost">Reset</button>
+      </div>
+    </div>
+    <div class="ctl">
+      <label>Speed &mdash; target <span id="speedLabel" class="speed-val">1&times; real-time</span></label>
+      <div class="speed-track" id="speedTrack">
+        <div class="speed-fill" id="speedFill"></div>
+        <div class="speed-actual-marker" id="speedActualMarker"></div>
+        <div class="speed-target-handle" id="speedTargetHandle"></div>
+      </div>
+    </div>
+    <div class="ctl">
+      <label>Window per sweep</label>
+      <select id="windowSelect">
+        <option value="60000">1 minute</option>
+        <option value="3600000">1 hour</option>
+        <option value="86400000">1 day</option>
+        <option value="604800000">1 week</option>
+        <option value="2592000000" selected>1 month</option>
+        <option value="7776000000">3 months</option>
+        <option value="15552000000">6 months</option>
+        <option value="31536000000">12 months</option>
+        <option value="79574400000">All time</option>
+      </select>
+    </div>
+    <div class="readout">
+      <div class="t mono" id="simClock">2024-03-01 00:00:00 UTC</div>
+      <div class="p" id="simProgress">0.0% through 30 months</div>
+      <div class="achieved ok" id="achievedSpeed">achieving requested speed</div>
+    </div>
+  </div>
+
+  <div class="scrubber-wrap">
+    <div class="scrubber" id="scrubber">
+      <div class="scrubber-fill" id="scrubberFill"></div>
+      <div class="scrubber-window" id="scrubberWindow"></div>
+      <div class="scrubber-ticks" id="scrubberTicks"></div>
+      <div class="scrubber-handle" id="scrubberHandle"></div>
+    </div>
+    <div class="scrubber-hint">drag to jump anywhere in the 30 months</div>
+  </div>
+
+  <div class="band-legend">
+    <span><i style="background:rgba(110,231,200,0.9)"></i>running total (cumulative sum since 2024-03-01)</span>
+    <span><i style="background:rgba(208,59,59,0.7);border-radius:0;height:2px;width:12px;"></i>no data available</span>
+    <span class="note">each panel's y-axis auto-scales to whatever range is currently in view — watch the numbers, not just the shape, when comparing panels</span>
+  </div>
+  <div class="axis-row">
+    <div></div>
+    <div class="ticks" id="axisTicks"></div>
+  </div>
+  <div class="bank" id="bank"></div>
+
+  <footer>
+    Data: Global Consciousness Project 2.0 (gcp2.net), independently mirrored &middot; each panel streams directly from <code>api/batch.php</code> in pages of up to 20,000 rows, buffered ahead of the sweep so playback speed is decoupled from per-request latency &mdash; until the fetch pipeline can't keep up, at which point the clock itself slows to match.
+  </footer>
+</div>
+
+<script>
+const API = 'api/';
+const BUILD_VERSION = '0.0.14.0'; // bump on every deploy — forces fresh fetches past any stale cache
+const DATASET_START = Date.parse('2024-03-01T00:00:00Z');
+const DATASET_END   = Date.parse('2026-09-07T23:59:59Z');
+const N_COLS = 480; // rendering resolution per monitor
+const DEFAULT_ON = ['Hong_Kong'];
+const MAX_CONCURRENT_FETCHES = 4;
+const DEFAULT_WINDOW_MS = 2_592_000_000; // 1 month of data-time per sweep lap
+const DEFAULT_SPEED_SLIDER_POS = 518; // ≈90,000×, so a 1-month window sweeps in ~30s
+// fixed categorical hues (dark-surface steps), assigned by cluster_id so a given
+// cluster always gets the same color regardless of which others are toggled on.
+// With 19 clusters and only 8 hues some repeat — validated (validate_palette.js,
+// --mode dark --surface #08080b) as a set of 8, not meant to stay distinct past that.
+const SERIES_COLORS = ['#3987e5','#d95926','#199e70','#c98500','#d55181','#008300','#9085e9','#e66767'];
+function seriesColorFor(clusterId){ return SERIES_COLORS[(clusterId-1) % SERIES_COLORS.length]; }
+function hexToRgb(hex){
+  const n = parseInt(hex.slice(1), 16);
+  return [(n>>16)&255, (n>>8)&255, n&255];
+}
+
+let WINDOW_MS = DEFAULT_WINDOW_MS;
+let clustersMeta = [];
+let monitors = new Map(); // id -> Monitor
+let playing = false;
+let simTime = DATASET_START;
+// true only until the user first presses Play or touches the scrubber — gates the
+// forward-looking start-of-timeline preview (see Monitor.loadForwardPreview)
+let neverInteracted = true;
+let speedMultiplier = speedFromSlider(DEFAULT_SPEED_SLIDER_POS); // user-set target/ceiling
+let effectiveSpeed = speedMultiplier; // actual speed in use, auto-throttled toward what fetches can sustain
+let lastFrameWall = null;
+let inFlight = 0;
+let fetchQueue = [];
+let achievedRatio = 1;
+let smoothedRatio = 1; // EMA of achievedRatio, so a single slow beat doesn't flicker the indicator
+let isLimited = false;
+let scrubbing = false;
+
+function bucketSecondsForWindow(windowMs){
+  // aim for ~4 samples per rendered column so min/max within a column still
+  // has some real texture, without fetching more resolution than can be shown
+  const colDurationS = (windowMs/N_COLS)/1000;
+  return Math.max(1, Math.min(21600, Math.floor(colDurationS/4)));
+}
+function speedFromSlider(pos){
+  // log scale: 1x .. 5,000,000x across slider 0..700
+  const maxExp = Math.log10(5_000_000);
+  const t = pos/700;
+  return Math.pow(10, t*maxExp);
+}
+function sliderPosFromSpeed(speed){
+  const maxExp = Math.log10(5_000_000);
+  return Math.max(0, Math.min(700, 700 * Math.log10(Math.max(1,speed)) / maxExp));
+}
+function speedPct(speed){ return sliderPosFromSpeed(speed)/700*100; }
+function fmtSpeed(s){
+  if(s < 2) return '1× real-time';
+  if(s < 1000) return Math.round(s)+'×';
+  if(s < 1_000_000) return (s/1000).toFixed(1)+'K×';
+  return (s/1_000_000).toFixed(2)+'M×';
+}
+function fmtClock(ms){
+  const d = new Date(ms);
+  return d.toISOString().slice(0,19).replace('T',' ')+' UTC';
+}
+function toMysqlDt(ms){
+  return new Date(ms).toISOString().slice(0,19).replace('T',' ');
+}
+
+// onProgress(receivedBytes, totalBytes|0) — totalBytes is 0 when the response
+// didn't carry a usable Content-Length (e.g. a proxy re-chunked/compressed it),
+// in which case the caller should show an indeterminate state, not a stalled 0%.
+async function queuedFetch(url, onProgress){
+  return new Promise((resolve,reject)=>{
+    fetchQueue.push({url,resolve,reject,onProgress});
+    pump();
+  });
+}
+async function runFetchJob(job){
+  const res = await fetch(job.url);
+  if(!job.onProgress || !res.body) return res.json();
+  const total = parseInt(res.headers.get('Content-Length')||'0',10);
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let received = 0, text = '';
+  while(true){
+    const {done,value} = await reader.read();
+    if(done) break;
+    received += value.length;
+    text += decoder.decode(value, {stream:true});
+    job.onProgress(received, total);
+  }
+  return JSON.parse(text);
+}
+function pump(){
+  while(inFlight < MAX_CONCURRENT_FETCHES && fetchQueue.length){
+    const job = fetchQueue.shift();
+    inFlight++;
+    runFetchJob(job).then(d=>{ inFlight--; job.resolve(d); pump(); })
+      .catch(e=>{ inFlight--; job.reject(e); pump(); });
+  }
+}
+
+class Monitor{
+  constructor(meta){
+    this.meta = meta;
+    this.color = seriesColorFor(meta.id);
+    this.colorRgb = hexToRgb(this.color);
+    this.firstTs = meta.first_ts ? Date.parse(meta.first_ts.replace(' ','T')+'Z') : null;
+    this.lastTs = meta.last_ts ? Date.parse(meta.last_ts.replace(' ','T')+'Z') : null;
+    this.buffer = []; // [ms, v, d] ascending, not yet consumed
+    this.cursorTs = null; // 'YYYY-MM-DD HH:MM:SS' of last fetched row
+    this.exhausted = false;
+    this.fetching = false;
+    this.fetchGen = 0; // bumped by seek()/reset() so an in-flight fetch from a stale window/cursor is discarded on arrival
+    // A resting-at-the-very-start-of-the-timeline preview: a separate, read-only
+    // snapshot of the first WINDOW_MS of real data, drawn only while neverInteracted
+    // is true. Kept entirely separate from the normal ring buffer/consumedUpTo
+    // pipeline (below) so it can never desync live playback bookkeeping.
+    this.previewMinMax = new Float32Array(N_COLS*2).fill(NaN);
+    this.previewLoaded = false;
+    this.previewLoading = false;
+    this.previewGen = 0;
+    this.previewLastTotal = null;
+    this.previewLastValue = null;
+    this.previewLastDevices = null;
+    // true only while a renderStaticWindow()/loadForwardPreview() fetch is in flight.
+    // loadingPct is a 0-100 real byte progress, or null when the response carried no
+    // usable Content-Length — show an indeterminate animation then, not a stuck 0%.
+    this.loading = false;
+    this.loadingPct = null;
+    this.consumedUpTo = DATASET_START;
+    this.lastValue = null;
+    this.lastDevices = null;
+    // ring buffer: absolute column index -> slot (absCol % N_COLS), so the strip scrolls
+    // continuously with "now" always at the right edge, no lap wraparound.
+    // Values stored are the RUNNING TOTAL (cumulative sum since dataset start), not raw readings.
+    this.ringMinMax = new Float32Array(N_COLS*2).fill(NaN);
+    this.ringColIndex = new Int32Array(N_COLS).fill(-1); // which absCol currently occupies each slot
+    this.ringGap = new Uint8Array(N_COLS); // 1 = confirmed no data for that column
+    this.lastPlottedMs = null;
+    this.lastAbsCol = -1;
+    this.runningTotal = 0; // tracks the most recently plotted row's running_total, for the readout
+    this.buildDom();
+  }
+  buildDom(){
+    const el = document.createElement('div');
+    el.className = 'monitor';
+    el.style.setProperty('--trace', this.color);
+    el.innerHTML = `
+      <div class="head">
+        <div class="name"><span class="swatch" style="background:${this.color}"></span>${this.meta.name.replace(/_/g,' ')}</div>
+        <div class="val mono" data-val>&mdash;</div>
+        <div class="raw mono" data-raw>last reading: &mdash;</div>
+        <div class="foot">
+          <span data-devices>&mdash; devices</span>
+        </div>
+      </div>
+      <div class="chartcol">
+        <canvas width="1400" height="120"></canvas>
+        <div class="axis-labels" data-axislabels></div>
+        <div class="status-overlay" data-status></div>
+        <div class="status-bar" data-statusbar><div class="status-bar-fill" data-statusbarfill></div></div>
+      </div>`;
+    this.dom = el;
+    this.canvas = el.querySelector('canvas');
+    this.ctx = this.canvas.getContext('2d');
+    this.valEl = el.querySelector('[data-val]');
+    this.rawEl = el.querySelector('[data-raw]');
+    this.devEl = el.querySelector('[data-devices]');
+    this.statusEl = el.querySelector('[data-status]');
+    this.axisLabelsEl = el.querySelector('[data-axislabels]');
+    this.statusBarEl = el.querySelector('[data-statusbar]');
+    this.statusBarFillEl = el.querySelector('[data-statusbarfill]');
+  }
+  reset(){
+    this.buffer = []; this.cursorTs = null; this.exhausted = false;
+    this.consumedUpTo = DATASET_START; this.lastValue = null;
+    this.fetchGen++;
+    this.resetColumns();
+  }
+  seek(ms){
+    this.buffer = [];
+    this.cursorTs = toMysqlDt(ms - 1000); // batch.php uses ts > after, so back up 1s
+    this.exhausted = false;
+    this.consumedUpTo = ms;
+    this.lastValue = null; this.lastDevices = null;
+    this.fetchGen++; // invalidate any fetch already in flight — its response no longer matches this cursor/window
+    this.resetColumns();
+  }
+  resetColumns(){
+    this.ringMinMax.fill(NaN); this.ringColIndex.fill(-1); this.ringGap.fill(0);
+    this.lastAbsCol = -1; this.lastPlottedMs = null;
+    this.ctx.clearRect(0,0,this.canvas.width,this.canvas.height);
+  }
+  bufferReachMs(){
+    if(this.buffer.length) return this.buffer[this.buffer.length-1][0];
+    return this.consumedUpTo;
+  }
+  async ensureBuffer(){
+    if(this.fetching || this.exhausted) return;
+    const bucket = bucketSecondsForWindow(WINDOW_MS);
+    // buffer runway is denominated in data-time; a bucketed row covers `bucket` data-seconds
+    // instead of 1, so a fixed row limit buys proportionally more real-time runway
+    const targetRunway = Math.max(5000, speedMultiplier*2000);
+    if(this.bufferReachMs() - this.consumedUpTo > targetRunway) return;
+    this.fetching = true;
+    const gen = this.fetchGen; // a seek()/reset() while this is in flight bumps fetchGen, so a stale response never overwrites fresher state
+    const after = this.cursorTs ? this.cursorTs : '';
+    const limit = Math.min(100000, Math.max(1000, Math.round(speedMultiplier*3/bucket)));
+    try{
+      const url = `${API}batch.php?cluster=${this.meta.id}&after=${encodeURIComponent(after)}&limit=${limit}&bucket=${bucket}&v=${BUILD_VERSION}`;
+      const rows = await queuedFetch(url);
+      if(gen !== this.fetchGen){ /* superseded by a seek()/reset() — discard */ }
+      else if(!rows.length){ this.exhausted = true; }
+      else{
+        for(const r of rows) this.buffer.push(r);
+        this.cursorTs = toMysqlDt(rows[rows.length-1][0]);
+      }
+    }catch(e){ /* transient; retry next tick */ }
+    this.fetching = false;
+  }
+  // While paused, a window/date/cluster change should show the whole selected
+  // window immediately rather than leaving the strip blank until Play streams
+  // past it. ensureBuffer() only ever fetches forward from the cursor a little
+  // at a time (by design, so live playback speed stays decoupled from request
+  // latency) — this instead fetches the entire visible window in one request
+  // and plots all of it at once. It leaves cursorTs/consumedUpTo at simTime,
+  // same as seek() does, so pressing Play afterward resumes streaming forward
+  // from exactly where the scrubber sits, through the ordinary tick()/ensureBuffer path.
+  async renderStaticWindow(){
+    const windowStart = Math.max(DATASET_START, simTime - WINDOW_MS);
+    this.buffer = [];
+    this.cursorTs = toMysqlDt(windowStart - 1000);
+    this.exhausted = false;
+    this.lastValue = null; this.lastDevices = null;
+    this.resetColumns();
+    this.fetchGen++;
+    const gen = this.fetchGen;
+    this.fetching = true;
+    const bucket = bucketSecondsForWindow(WINDOW_MS);
+    const nominalBuckets = Math.ceil((simTime - windowStart)/1000/Math.max(bucket,1));
+    const limit = Math.min(100000, Math.max(1000, nominalBuckets + Math.ceil(nominalBuckets*0.15) + 50));
+    const before = encodeURIComponent(toMysqlDt(simTime));
+    this.loading = true; this.loadingPct = null;
+    try{
+      const url = `${API}batch.php?cluster=${this.meta.id}&after=${encodeURIComponent(this.cursorTs)}&before=${before}&limit=${limit}&bucket=${bucket}&v=${BUILD_VERSION}`;
+      const rows = await queuedFetch(url, (recv,total)=>{
+        if(gen === this.fetchGen) this.loadingPct = total>0 ? Math.round(recv/total*100) : null;
+      });
+      if(gen === this.fetchGen){
+        if(!rows.length){ this.exhausted = true; }
+        else{
+          for(const r of rows) this.buffer.push(r);
+          this.cursorTs = toMysqlDt(rows[rows.length-1][0]);
+        }
+        this.consumeUpTo(simTime);
+      }
+    }catch(e){ /* transient */ }
+    if(gen === this.fetchGen) this.loading = false;
+    this.fetching = false;
+  }
+  // Resting exactly at DATASET_START, the normal trailing window (behind simTime)
+  // is empty by definition. Rather than leave a fresh page load blank, preview the
+  // first WINDOW_MS of real data forward from DATASET_START — read-only, and kept
+  // out of the buffer/consumedUpTo pipeline entirely so it can't affect playback
+  // bookkeeping once Play is pressed or the scrubber is touched.
+  async loadForwardPreview(){
+    if(this.previewLoaded || this.previewLoading) return;
+    this.previewLoading = true;
+    const gen = ++this.previewGen;
+    const previewEnd = Math.min(DATASET_START + WINDOW_MS, DATASET_END);
+    const bucket = bucketSecondsForWindow(WINDOW_MS);
+    const nominalBuckets = Math.ceil((previewEnd - DATASET_START)/1000/Math.max(bucket,1));
+    const limit = Math.min(100000, Math.max(1000, nominalBuckets + Math.ceil(nominalBuckets*0.15) + 50));
+    this.loading = true; this.loadingPct = null;
+    try{
+      const after = encodeURIComponent(toMysqlDt(DATASET_START - 1000));
+      const before = encodeURIComponent(toMysqlDt(previewEnd));
+      const url = `${API}batch.php?cluster=${this.meta.id}&after=${after}&before=${before}&limit=${limit}&bucket=${bucket}&v=${BUILD_VERSION}`;
+      const rows = await queuedFetch(url, (recv,total)=>{
+        if(gen === this.previewGen) this.loadingPct = total>0 ? Math.round(recv/total*100) : null;
+      });
+      if(gen === this.previewGen){ // otherwise superseded by a window change mid-flight — discard
+        const colDurationMs = WINDOW_MS/N_COLS;
+        this.previewMinMax.fill(NaN);
+        for(const row of rows){
+          let ms, mn, mx, d, v;
+          if(row.length >= 5){ ms=row[0]; mn=row[1]; mx=row[2]; d=row[3]; v=row[4]; }
+          else{ const [rawMs,rawV,rawD,rawRt] = row; ms=rawMs; v=rawV; d=rawD; mn=mx=rawRt; }
+          const col = Math.floor((ms-DATASET_START)/colDurationMs);
+          if(col<0 || col>=N_COLS) continue;
+          if(isNaN(this.previewMinMax[col*2])){ this.previewMinMax[col*2]=mn; this.previewMinMax[col*2+1]=mx; }
+          else{
+            if(mn<this.previewMinMax[col*2]) this.previewMinMax[col*2]=mn;
+            if(mx>this.previewMinMax[col*2+1]) this.previewMinMax[col*2+1]=mx;
+          }
+          this.previewLastTotal = mx; this.previewLastValue = v; this.previewLastDevices = Math.round(d);
+        }
+        this.previewLoaded = true;
+      }
+    }catch(e){ /* transient; a redraw will retry since previewLoaded stays false */ }
+    if(gen === this.previewGen) this.loading = false;
+    this.previewLoading = false;
+  }
+  consumeUpTo(targetMs){
+    let i=0;
+    while(i < this.buffer.length && this.buffer[i][0] <= targetMs){
+      this.plot(this.buffer[i]);
+      i++;
+    }
+    if(i>0) this.buffer.splice(0,i);
+    this.consumedUpTo = targetMs;
+  }
+  plot(row){
+    // raw row: [ms, coherence, devices, running_total] (4 elements)
+    // aggregated row: [bucket_end_ms, min_running_total, max_running_total, avg_devices, avg_coherence] (5)
+    let ms, v, d, mn, mx;
+    if(row.length >= 5){
+      ms = row[0]; mn = row[1]; mx = row[2]; d = row[3]; v = row[4];
+    } else {
+      const [rawMs,rawV,rawD,rawRt] = row;
+      ms = rawMs; v = rawV; d = rawD;
+      mn = (rawRt !== undefined && rawRt !== null) ? rawRt : this.runningTotal;
+      mx = mn;
+    }
+    this.lastValue = v; this.lastDevices = Math.round(d);
+    const colDurationMs = WINDOW_MS/N_COLS;
+    const absCol = Math.floor((ms-DATASET_START)/colDurationMs);
+    const prevRunningTotal = this.runningTotal; // level to hold flat across any gap before this point
+
+    // A gap in the raw readings doesn't mean the running total is unknown —
+    // it just means nothing new was added to the sum, so it stays flat at
+    // whatever it was. Backfill skipped columns at that held level rather
+    // than marking them as missing data.
+    if(this.lastPlottedMs != null && ms - this.lastPlottedMs > colDurationMs*1.5){
+      const prevAbsCol = Math.floor((this.lastPlottedMs-DATASET_START)/colDurationMs);
+      const from = Math.max(prevAbsCol+1, absCol-N_COLS); // no point marking columns older than one window
+      for(let a=from; a<absCol; a++){
+        const slot = ((a%N_COLS)+N_COLS)%N_COLS;
+        this.ringColIndex[slot] = a;
+        this.ringGap[slot] = 1; // still tracked, just for the status label — not for how the line renders
+        this.ringMinMax[slot*2] = prevRunningTotal;
+        this.ringMinMax[slot*2+1] = prevRunningTotal;
+      }
+    }
+
+    this.runningTotal = mx; // most recent known level (bucket's ending value, or the raw reading itself)
+
+    const slot = ((absCol%N_COLS)+N_COLS)%N_COLS;
+    if(this.ringColIndex[slot] !== absCol){
+      this.ringMinMax[slot*2] = mn; this.ringMinMax[slot*2+1] = mx;
+      this.ringColIndex[slot] = absCol; this.ringGap[slot] = 0;
+    } else {
+      if(mn < this.ringMinMax[slot*2]) this.ringMinMax[slot*2] = mn;
+      if(mx > this.ringMinMax[slot*2+1]) this.ringMinMax[slot*2+1] = mx;
+    }
+    this.lastAbsCol = absCol;
+    this.lastPlottedMs = ms;
+  }
+  draw(){
+    const ctx = this.ctx, W = this.canvas.width, H = this.canvas.height;
+    const colW = W/N_COLS;
+    ctx.clearRect(0,0,W,H);
+
+    const offlineBefore = this.firstTs!=null && simTime < this.firstTs;
+    const offlineAfter = this.lastTs!=null && simTime > this.lastTs;
+    const colDurationMs = WINDOW_MS/N_COLS;
+    const currentAbsCol = Math.floor((simTime-DATASET_START)/colDurationMs);
+    const showForwardPreview = neverInteracted && !offlineBefore && !offlineAfter && currentAbsCol < N_COLS-1;
+    if(showForwardPreview) this.loadForwardPreview();
+    if(showForwardPreview && this.previewLoaded){ this.drawForwardPreview(ctx,W,H,colW); return; }
+    if(offlineBefore){
+      // nothing has ever been read yet — no prior total to hold flat at
+      ctx.save();
+      ctx.strokeStyle = 'rgba(208,59,59,0.55)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6,5]);
+      ctx.beginPath(); ctx.moveTo(0, H/2); ctx.lineTo(W, H/2); ctx.stroke();
+      ctx.restore();
+      this.valEl.textContent = '—';
+      this.rawEl.textContent = 'last reading: —';
+      this.devEl.textContent = '— devices';
+      this.axisLabelsEl.innerHTML = '';
+      // when this panel's data starts is now shown as a colored tick on the
+      // 30-month scrubber (matching this panel's color) instead of here
+      this.statusEl.textContent = '';
+      this.statusEl.className = 'status-overlay';
+      return;
+    }
+    if(offlineAfter){
+      // the cluster went offline for good, but we know its last total — hold it flat
+      const y = H/2;
+      const [r,g,bl] = this.colorRgb;
+      ctx.strokeStyle = `rgba(${r},${g},${bl},0.95)`;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+      this.axisLabelsEl.innerHTML = `<span>${this.runningTotal.toFixed(1)}</span><span>${this.runningTotal.toFixed(1)}</span>`;
+      this.valEl.textContent = this.runningTotal.toFixed(2);
+      this.rawEl.textContent = 'last reading: ' + (this.lastValue!=null ? this.lastValue.toFixed(3) : '—');
+      this.devEl.textContent = this.lastDevices!=null ? this.lastDevices+' devices' : '— devices';
+      this.statusEl.textContent = `no data available — none since ${fmtClock(this.lastTs).slice(0,10)}`;
+      this.statusEl.className = 'status-overlay offline';
+      return;
+    }
+
+
+    // continuously-scrolling strip: right edge is always "now" (simTime), left edge is WINDOW_MS earlier
+    const leftAbsCol = currentAbsCol - N_COLS + 1;
+
+    // pass 1: find the visible range of the running total, to auto-scale the y-axis (financial-chart style)
+    let visMin = Infinity, visMax = -Infinity;
+    for(let i=0;i<N_COLS;i++){
+      const absCol = leftAbsCol+i;
+      if(absCol<0) continue;
+      const slot = ((absCol%N_COLS)+N_COLS)%N_COLS;
+      if(this.ringColIndex[slot] !== absCol) continue;
+      const mn = this.ringMinMax[slot*2], mx = this.ringMinMax[slot*2+1];
+      if(mn < visMin) visMin = mn;
+      if(mx > visMax) visMax = mx;
+    }
+    if(!isFinite(visMin) || !isFinite(visMax)){ visMin = this.runningTotal-1; visMax = this.runningTotal+1; }
+    if(visMax - visMin < 1e-6){ visMin -= 1; visMax += 1; }
+    // no padding: the true min touches the bottom edge, the true max touches the top —
+    // maximum sensitivity to movement within the visible window
+    const yOf = v => H - ((v-visMin)/(visMax-visMin))*H;
+
+    // pass 2: draw
+    let sawGapNearNow = false;
+    let path = [];
+    for(let i=0;i<N_COLS;i++){
+      const absCol = leftAbsCol+i;
+      if(absCol<0) continue;
+      const slot = ((absCol%N_COLS)+N_COLS)%N_COLS;
+      if(this.ringColIndex[slot] !== absCol) continue; // scrolled past this slot, or never written
+      const x = i*colW;
+      // a gap just means the total held flat here — it still renders as part
+      // of the same continuous line, we just note it for the status label
+      if(this.ringGap[slot] && i > N_COLS-8) sawGapNearNow = true;
+      const mn = this.ringMinMax[slot*2], mx = this.ringMinMax[slot*2+1];
+      path.push([x, yOf(mn), yOf(mx)]);
+    }
+    if(path.length) this.strokeAreaPath(ctx,path,H);
+
+    // "now" edge
+    ctx.strokeStyle = 'rgba(144,133,233,0.6)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(W-1,0); ctx.lineTo(W-1,H); ctx.stroke();
+
+    this.axisLabelsEl.innerHTML = `<span>${visMax.toFixed(1)}</span><span>${visMin.toFixed(1)}</span>`;
+    this.valEl.textContent = this.runningTotal.toFixed(2);
+    this.rawEl.textContent = 'last reading: ' + (this.lastValue!=null ? this.lastValue.toFixed(3) : '—');
+    this.devEl.textContent = this.lastDevices!=null ? this.lastDevices+' devices' : '— devices';
+    if(this.loading){
+      this.statusEl.textContent = this.loadingPct!=null ? `loading… ${this.loadingPct}%` : 'loading…';
+      this.statusEl.className = 'status-overlay buffering';
+    } else if(this.exhausted){
+      this.statusEl.textContent = 'no data available';
+      this.statusEl.className = 'status-overlay offline';
+    } else if(sawGapNearNow){
+      this.statusEl.textContent = 'no data available';
+      this.statusEl.className = 'status-overlay offline';
+    } else if(this.bufferReachMs()-this.consumedUpTo < 500){
+      this.statusEl.textContent = 'loading…';
+      this.statusEl.className = 'status-overlay buffering';
+    } else {
+      this.statusEl.textContent = '';
+      this.statusEl.className = 'status-overlay';
+    }
+    this.updateLoadingBar();
+  }
+  // Reflects this.loading/loadingPct onto the small bar under the status text —
+  // a real byte-progress fill when the response carried a Content-Length, an
+  // indeterminate sliding animation otherwise (still says "something's happening"
+  // rather than looking stalled at 0%).
+  updateLoadingBar(){
+    if(this.loading){
+      this.statusBarEl.className = 'status-bar active' + (this.loadingPct==null ? ' indeterminate' : '');
+      this.statusBarFillEl.style.width = this.loadingPct!=null ? this.loadingPct+'%' : '';
+    } else {
+      this.statusBarEl.className = 'status-bar';
+    }
+  }
+  // Renders the read-only start-of-timeline preview (see loadForwardPreview): the
+  // full first WINDOW_MS of real data, forward from DATASET_START, independent of
+  // the normal ring buffer. Column i is calendar column i directly (no scrolling —
+  // there's nothing to scroll yet), and the "now" line sits wherever simTime
+  // actually is within that first window instead of always at the right edge.
+  drawForwardPreview(ctx, W, H, colW){
+    const colDurationMs = WINDOW_MS/N_COLS;
+    const currentAbsCol = Math.floor((simTime-DATASET_START)/colDurationMs);
+    let visMin = Infinity, visMax = -Infinity;
+    for(let i=0;i<N_COLS;i++){
+      const mn = this.previewMinMax[i*2], mx = this.previewMinMax[i*2+1];
+      if(isNaN(mn)) continue;
+      if(mn < visMin) visMin = mn;
+      if(mx > visMax) visMax = mx;
+    }
+    const hasData = isFinite(visMin) && isFinite(visMax);
+    if(!hasData){ visMin = -1; visMax = 1; }
+    if(visMax - visMin < 1e-6){ visMin -= 1; visMax += 1; }
+    const yOf = v => H - ((v-visMin)/(visMax-visMin))*H;
+
+    let path = [];
+    for(let i=0;i<N_COLS;i++){
+      const mn = this.previewMinMax[i*2], mx = this.previewMinMax[i*2+1];
+      if(isNaN(mn)) continue;
+      path.push([i*colW, yOf(mn), yOf(mx)]);
+    }
+    if(path.length) this.strokeAreaPath(ctx,path,H);
+
+    const nowX = Math.max(0, Math.min(W-1, currentAbsCol*colW));
+    ctx.strokeStyle = 'rgba(144,133,233,0.6)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(nowX,0); ctx.lineTo(nowX,H); ctx.stroke();
+
+    this.axisLabelsEl.innerHTML = hasData ? `<span>${visMax.toFixed(1)}</span><span>${visMin.toFixed(1)}</span>` : '';
+    if(this.previewLastTotal != null){
+      this.valEl.textContent = this.previewLastTotal.toFixed(2);
+      this.rawEl.textContent = 'last reading: ' + (this.previewLastValue!=null ? this.previewLastValue.toFixed(3) : '—');
+      this.devEl.textContent = this.previewLastDevices!=null ? this.previewLastDevices+' devices' : '— devices';
+    }
+    this.statusEl.textContent = hasData ? '' : 'no data available';
+    this.statusEl.className = hasData ? 'status-overlay' : 'status-overlay offline';
+  }
+  // draws one contiguous run of columns as a line (using each column's max, the "high" side of
+  // its min/max range) with a translucent fill down to the bottom — financial-chart area style
+  strokeAreaPath(ctx, path, H){
+    const [r,g,b] = this.colorRgb;
+    ctx.beginPath();
+    ctx.moveTo(path[0][0], path[0][2]);
+    for(const [x,,yMax] of path) ctx.lineTo(x, yMax);
+    ctx.strokeStyle = `rgba(${r},${g},${b},0.95)`;
+    ctx.lineWidth = 1.6;
+    ctx.stroke();
+
+    const last = path[path.length-1];
+    ctx.lineTo(last[0], H);
+    ctx.lineTo(path[0][0], H);
+    ctx.closePath();
+    const grad = ctx.createLinearGradient(0,0,0,H);
+    grad.addColorStop(0, `rgba(${r},${g},${b},0.22)`);
+    grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+    ctx.fillStyle = grad;
+    ctx.fill();
+  }
+}
+
+function buildPicker(){
+  const el = document.getElementById('picker');
+  el.innerHTML = clustersMeta.map(c=>{
+    const checked = DEFAULT_ON.includes(c.name) ? 'checked' : '';
+    const swatch = `<span class="swatch" style="background:${seriesColorFor(c.id)}"></span>`;
+    return `<label><input type="checkbox" data-id="${c.id}" ${checked}>${swatch}<span>${c.name.replace(/_/g,' ')}</span></label>`;
+  }).join('');
+  el.querySelectorAll('input').forEach(inp=>{
+    inp.addEventListener('change', ()=>{
+      const id = +inp.dataset.id;
+      const meta = clustersMeta.find(c=>c.id===id);
+      if(inp.checked) addMonitor(meta); else removeMonitor(id);
+    });
+  });
+}
+function addMonitor(meta){
+  if(monitors.has(meta.id)) return;
+  const m = new Monitor(meta);
+  m.consumedUpTo = simTime;
+  monitors.set(meta.id, m);
+  document.getElementById('bank').appendChild(m.dom);
+  if(!playing) m.renderStaticWindow();
+  updateStartTicks();
+}
+function removeMonitor(id){
+  const m = monitors.get(id);
+  if(!m) return;
+  m.dom.remove();
+  monitors.delete(id);
+  updateStartTicks();
+}
+// one colored tick per active cluster marking where its data begins, so a gap
+// (a cluster that came online partway through the project) is visible on the
+// timeline up front instead of only discovered by scrubbing into empty data.
+function updateStartTicks(){
+  const el = document.getElementById('scrubberTicks');
+  const span = DATASET_END - DATASET_START;
+  el.innerHTML = [...monitors.values()]
+    .filter(m => m.firstTs != null && m.firstTs > DATASET_START + 86400000)
+    .map(m => `<div class="scrubber-tick" style="left:${(m.firstTs-DATASET_START)/span*100}%; background:${m.color}"></div>`)
+    .join('');
+}
+
+function tick(wallNow){
+  if(lastFrameWall==null) lastFrameWall = wallNow;
+  const realDt = wallNow - lastFrameWall;
+  lastFrameWall = wallNow;
+
+  for(const m of monitors.values()) m.ensureBuffer();
+
+  if(playing && monitors.size){
+    const desired = simTime + realDt*effectiveSpeed;
+    let cap = Infinity;
+    for(const m of monitors.values()){
+      if(!m.exhausted) cap = Math.min(cap, m.bufferReachMs());
+    }
+    const target = Math.min(desired, cap, DATASET_END);
+    const actualAdvance = target - simTime;
+    const desiredAdvance = desired - simTime;
+    achievedRatio = desiredAdvance>0 ? Math.max(0, Math.min(1, actualAdvance/desiredAdvance)) : 1;
+    // EMA over ~700ms so one slow request doesn't flicker the indicator
+    const alpha = 1 - Math.exp(-realDt/700);
+    smoothedRatio += (achievedRatio - smoothedRatio) * alpha;
+    isLimited = smoothedRatio < (isLimited ? 0.93 : 0.85); // hysteresis: harder to enter than to leave
+
+    if(isLimited){
+      // back off toward what's actually sustainable. Time constant is long enough that a single
+      // large in-flight fetch (up to a few seconds, now that batches can be 100K rows) doesn't
+      // get judged as a sustained shortfall before it even has a chance to land.
+      const backoffAlpha = 1 - Math.exp(-realDt/3000);
+      effectiveSpeed += (Math.max(1, effectiveSpeed*achievedRatio) - effectiveSpeed) * backoffAlpha;
+    } else if(effectiveSpeed < speedMultiplier){
+      // creep back toward the requested target once the fetch pipeline has headroom again
+      const recoverAlpha = 1 - Math.exp(-realDt/4000);
+      effectiveSpeed += (speedMultiplier - effectiveSpeed) * recoverAlpha;
+    }
+    effectiveSpeed = Math.max(1, Math.min(speedMultiplier, effectiveSpeed));
+
+    simTime = target;
+    for(const m of monitors.values()) m.consumeUpTo(simTime);
+    if(simTime >= DATASET_END) playing = false, updatePlayButton();
+  } else {
+    smoothedRatio = 1; isLimited = false;
+    effectiveSpeed = speedMultiplier; // give the target speed a fresh attempt each time playback (re)starts
+  }
+
+  for(const m of monitors.values()) m.draw();
+  updateReadout();
+  requestAnimationFrame(tick);
+}
+
+// The window-region box shows how wide the current window selection is relative
+// to the full 30-month bar (e.g. "All time" spans the whole bar; "1 minute" is a
+// sliver) — sized off WINDOW_MS, positioned off the handle's own pct. Trailing
+// mode: window ends at the handle (matches the chart's right-edge-is-now
+// convention). Forward-preview mode (see Monitor.loadForwardPreview): window
+// starts at the handle instead, since the chart is showing forward from here.
+function updateWindowRegion(pct){
+  const el = document.getElementById('scrubberWindow');
+  const widthPct = Math.min(100, WINDOW_MS/(DATASET_END-DATASET_START)*100);
+  const currentAbsCol = Math.floor((simTime-DATASET_START)/(WINDOW_MS/N_COLS));
+  const forward = neverInteracted && currentAbsCol < N_COLS-1;
+  const leftPct = forward ? pct : Math.max(0, pct-widthPct);
+  el.style.left = leftPct+'%';
+  el.style.width = widthPct+'%';
+}
+function updateReadout(){
+  document.getElementById('simClock').textContent = fmtClock(simTime);
+  const pct = (simTime-DATASET_START)/(DATASET_END-DATASET_START)*100;
+  document.getElementById('simProgress').textContent = pct.toFixed(3)+'% through 30 months';
+  if(!scrubbing){
+    document.getElementById('scrubberFill').style.width = pct+'%';
+    document.getElementById('scrubberHandle').style.left = pct+'%';
+    updateWindowRegion(pct);
+  }
+  updateAxisTicks();
+
+  const actualPct = speedPct(effectiveSpeed);
+  document.getElementById('speedFill').style.width = actualPct+'%';
+  document.getElementById('speedActualMarker').style.left = actualPct+'%';
+
+  const ind = document.getElementById('achievedSpeed');
+  const closeToTarget = effectiveSpeed > speedMultiplier*0.97;
+  if(playing && !closeToTarget){
+    ind.textContent = `fetch-limited — auto-reduced to ~${fmtSpeed(effectiveSpeed)} (target ${fmtSpeed(speedMultiplier)})`;
+    ind.className = 'achieved limited';
+  } else if(playing){
+    ind.textContent = 'achieving requested speed';
+    ind.className = 'achieved ok';
+  } else {
+    ind.textContent = 'paused';
+    ind.className = 'achieved ok';
+  }
+}
+function updatePlayButton(){
+  document.getElementById('btnPlay').textContent = playing ? 'Pause' : 'Play';
+}
+
+function seekTo(ms){
+  simTime = Math.max(DATASET_START, Math.min(DATASET_END, ms));
+  smoothedRatio = 1; isLimited = false; effectiveSpeed = speedMultiplier;
+  for(const m of monitors.values()) m.seek(simTime);
+  const pct = (simTime-DATASET_START)/(DATASET_END-DATASET_START)*100;
+  document.getElementById('scrubberFill').style.width = pct+'%';
+  document.getElementById('scrubberHandle').style.left = pct+'%';
+  updateWindowRegion(pct);
+}
+
+(function setupScrubber(){
+  const el = document.getElementById('scrubber');
+  let wasPlaying = false;
+  function msFromEvent(e){
+    const rect = el.getBoundingClientRect();
+    const frac = Math.max(0, Math.min(1, (e.clientX-rect.left)/rect.width));
+    return DATASET_START + frac*(DATASET_END-DATASET_START);
+  }
+  function onMove(e){
+    seekTo(msFromEvent(e));
+  }
+  function onUp(){
+    scrubbing = false;
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onUp);
+    playing = wasPlaying;
+    updatePlayButton();
+    lastFrameWall = null;
+    // if playback isn't resuming, show the whole window at the drop point right away
+    // rather than leaving the strip blank until Play streams past it; if it IS resuming,
+    // just let the ordinary tick()/ensureBuffer path stream forward from here as usual
+    if(!playing) for(const m of monitors.values()) m.renderStaticWindow();
+  }
+  el.addEventListener('pointerdown', e=>{
+    neverInteracted = false; // the start-of-timeline preview is a one-time thing — once touched, normal trailing behavior always applies from here on
+    scrubbing = true;
+    wasPlaying = playing;
+    playing = false;
+    seekTo(msFromEvent(e));
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  });
+})();
+
+document.getElementById('btnPlay').addEventListener('click', ()=>{
+  neverInteracted = false;
+  playing = !playing;
+  lastFrameWall = null;
+  updatePlayButton();
+});
+document.getElementById('btnReset').addEventListener('click', ()=>{
+  playing = false; updatePlayButton();
+  simTime = DATASET_START;
+  smoothedRatio = 1; isLimited = false; effectiveSpeed = speedMultiplier;
+  for(const m of monitors.values()){
+    m.reset();
+    m.renderStaticWindow(); // paused at the new position — show the window immediately
+  }
+  updateAxisTicks();
+});
+function setTargetSpeed(speed){
+  speedMultiplier = Math.max(1, Math.min(5_000_000, speed));
+  document.getElementById('speedLabel').textContent = fmtSpeed(speedMultiplier);
+  document.getElementById('speedTargetHandle').style.left = speedPct(speedMultiplier)+'%';
+}
+(function setupSpeedTrack(){
+  const el = document.getElementById('speedTrack');
+  function speedFromEvent(e){
+    const rect = el.getBoundingClientRect();
+    const frac = Math.max(0, Math.min(1, (e.clientX-rect.left)/rect.width));
+    return speedFromSlider(frac*700);
+  }
+  function onMove(e){ setTargetSpeed(speedFromEvent(e)); }
+  function onUp(){
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onUp);
+  }
+  el.addEventListener('pointerdown', e=>{
+    setTargetSpeed(speedFromEvent(e));
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+  });
+})();
+setTargetSpeed(speedMultiplier);
+
+function fmtAxisTime(ms){
+  const iso = new Date(ms).toISOString();
+  if(WINDOW_MS <= 3_600_000) return iso.slice(11,19);            // HH:MM:SS
+  if(WINDOW_MS <= 604_800_000) return iso.slice(5,16).replace('T',' '); // MM-DD HH:MM
+  return iso.slice(0,10);                                        // YYYY-MM-DD
+}
+function updateAxisTicks(){
+  const el = document.getElementById('axisTicks');
+  const steps = 6;
+  let html = '';
+  // mirror draw()'s forward-preview condition: at rest right at the start of the
+  // timeline, the "window behind simTime" is meaningless (would show DATASET_START
+  // repeated for every tick) — show ticks across the previewed forward window instead
+  const currentAbsCol = Math.floor((simTime-DATASET_START)/(WINDOW_MS/N_COLS));
+  const showForwardPreview = neverInteracted && currentAbsCol < N_COLS-1;
+  const rangeStart = showForwardPreview ? DATASET_START : simTime - WINDOW_MS;
+  const rangeEnd = showForwardPreview ? Math.min(DATASET_START+WINDOW_MS, DATASET_END) : simTime;
+  for(let i=0;i<=steps;i++){
+    const t = rangeStart + (rangeEnd-rangeStart)*i/steps;
+    html += `<span>${fmtAxisTime(Math.max(DATASET_START,t))}</span>`;
+  }
+  el.innerHTML = html;
+}
+document.getElementById('windowSelect').addEventListener('change', e=>{
+  WINDOW_MS = +e.target.value;
+  // the bucket size (and therefore the shape of already-buffered/in-flight rows) depends on
+  // WINDOW_MS, so re-seek to the current position rather than just clearing the columns —
+  // this drops stale-resolution buffered data and refetches at the new bucket size
+  for(const m of monitors.values()){
+    if(playing) m.seek(m.consumedUpTo);
+    else m.renderStaticWindow(); // paused: show the whole new window immediately instead of waiting for Play
+    m.previewLoaded = false; m.previewGen++; // start-of-timeline preview content is sized to WINDOW_MS — invalidate and let the next draw() reload it
+  }
+  updateAxisTicks();
+});
+updateAxisTicks();
+
+(async function init(){
+  const res = await fetch(API+'clusters.php?v='+BUILD_VERSION);
+  clustersMeta = await res.json();
+  buildPicker();
+  // start one window-length in, not at DATASET_START itself — the visible strip
+  // trails behind simTime, so starting exactly at DATASET_START would show that
+  // window empty by definition. Parking at the window's end instead means the
+  // scrubber's own window-region highlight box sits flush against the handle
+  // (0% to one-window-width), and the chart shows that whole span immediately —
+  // handle, clock, and "now" line all agree, with no forward-looking special case needed.
+  simTime = Math.min(DATASET_START + WINDOW_MS, DATASET_END);
+  clustersMeta.filter(c=>DEFAULT_ON.includes(c.name)).forEach(addMonitor);
+  requestAnimationFrame(tick);
+})();
+</script>
+</body>
+</html>
