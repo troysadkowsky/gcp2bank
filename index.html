@@ -144,7 +144,11 @@
   .scrubber-window:active{ cursor:grabbing;
   }
   .scrubber-ticks{ position:absolute; inset:0; pointer-events:none; }
-  .scrubber-tick{ position:absolute; top:2px; bottom:2px; width:2px; border-radius:1px; opacity:0.9; }
+  /* wider than it looks: the visible 2px bar is the ::after pseudo-element,
+     centered in an 10px hit area so hovering for the tooltip doesn't need
+     pixel-precise aim */
+  .scrubber-tick{ position:absolute; top:0; bottom:0; width:10px; margin-left:-4px; pointer-events:auto; cursor:pointer; }
+  .scrubber-tick::after{ content:''; position:absolute; left:4px; top:2px; bottom:2px; width:2px; border-radius:1px; opacity:0.9; background:inherit; }
   .scrubber-hint{ font-family:"IBM Plex Mono",monospace; font-size:10px; color:var(--muted); margin-top:5px; }
 
   .gcp2-shoutout{
@@ -180,7 +184,8 @@
     position:fixed; z-index:20; pointer-events:none;
     font-family:"IBM Plex Mono",monospace; font-size:11px; color:var(--ink);
     background:var(--panel-2); border:1px solid var(--border); border-radius:4px;
-    padding:5px 9px; white-space:nowrap; box-shadow:0 4px 14px rgba(0,0,0,0.4);
+    padding:5px 9px; white-space:normal; max-width:min(320px, calc(100vw - 16px));
+    box-shadow:0 4px 14px rgba(0,0,0,0.4);
   }
   .hover-tooltip .val{ color:var(--muted); margin-left:8px; }
   .monitor{
@@ -268,7 +273,7 @@
 <body>
 <div class="wrap">
   <header>
-    <div class="eyebrow">GCP2 &middot; historical readings, March 2024 &ndash; September 2026 &middot; v0.1.1.0</div>
+    <div class="eyebrow">GCP2 &middot; historical readings, March 2024 &ndash; September 2026 &middot; v0.1.1.8</div>
     <h1>Coherence Monitor Bank</h1>
     <p class="dek">Every reading in this bank is historical &mdash; recorded March 2024 through September 2026, played back from a 79.5-million-second record and styled like a bank of heart-rate monitors sweeping across it. Push the speed up to compress months into seconds, or slow down to watch a single moment unfold.</p>
 
@@ -366,6 +371,7 @@
   <div class="band-legend">
     <span><i style="background:rgba(110,231,200,0.9)"></i>running total (cumulative sum since 2024-03-01)</span>
     <span><i style="background:rgba(208,59,59,0.7);border-radius:0;height:2px;width:12px;"></i>no data available</span>
+    <span><i style="background:var(--ink-2);border-radius:1px;height:12px;width:2px;"></i>colored tick above = where that cluster's data begins — hover it for details</span>
     <span class="note">each panel's y-axis auto-scales to whatever range is currently in view — watch the numbers, not just the shape, when comparing panels</span>
   </div>
   <div class="axis-row">
@@ -382,7 +388,7 @@
 
 <script>
 const API = 'api/';
-const BUILD_VERSION = '0.1.1.0'; // bump on every deploy — forces fresh fetches past any stale cache
+const BUILD_VERSION = '0.1.1.8'; // bump on every deploy — forces fresh fetches past any stale cache
 const DATASET_START = Date.parse('2024-03-01T00:00:00Z');
 const DATASET_END   = Date.parse('2026-09-07T23:59:59Z');
 const N_COLS = 480; // rendering resolution per monitor
@@ -514,6 +520,14 @@ class Monitor{
     this.exhausted = false;
     this.fetching = false;
     this.fetchGen = 0; // bumped by seek()/reset() so an in-flight fetch from a stale window/cursor is discarded on arrival
+    // true from construction until this monitor's own buffer has genuinely caught
+    // up to the shared clock — cleared in tick(), AFTER simTime is updated for that
+    // tick (see the comment there for why the ordering matters). A brand-new
+    // monitor's buffer starts empty and frozen at whatever simTime was at join
+    // time; without this exclusion the shared clock (bounded by the slowest
+    // monitor's bufferReachMs(), in tick()'s cap calculation) would stall every
+    // already-running monitor until the new one's buffer catches up.
+    this.justAdded = true;
     // A resting-at-the-very-start-of-the-timeline preview: a separate, read-only
     // snapshot of the first WINDOW_MS of real data, drawn only while neverInteracted
     // is true. Kept entirely separate from the normal ring buffer/consumedUpTo
@@ -656,13 +670,19 @@ class Monitor{
     if(this.exhausted) return;
     const bucket = bucketSecondsForWindow(WINDOW_MS);
     // buffer runway is denominated in data-time; a bucketed row covers `bucket` data-seconds
-    // instead of 1, so a fixed row limit buys proportionally more real-time runway
-    const targetRunway = Math.max(5000, speedMultiplier*2000);
+    // instead of 1, so a fixed row limit buys proportionally more real-time runway.
+    // Threshold ~= 4s of real playback left before the next fetch is kicked off
+    // (was 2s) — more lead time for a single slow round-trip to land before the
+    // buffer actually runs dry and the fetch-limited backoff kicks in.
+    const targetRunway = Math.max(5000, speedMultiplier*4000);
     if(this.bufferReachMs() - this.consumedUpTo > targetRunway) return;
     this.fetching = true;
     const gen = this.fetchGen; // a seek()/reset() while this is in flight bumps fetchGen, so a stale response never overwrites fresher state
     const after = this.cursorTs ? this.cursorTs : '';
-    const limit = Math.min(100000, Math.max(1000, Math.round(speedMultiplier*3/bucket)));
+    // Each fetch now buys ~10s of real playback runway (was ~3s) — fewer, larger
+    // round-trips per unit of playback time means fewer chances for any one of
+    // them to be caught by a latency spike and trigger the fetch-limited backoff.
+    const limit = Math.min(100000, Math.max(1000, Math.round(speedMultiplier*10/bucket)));
     try{
       const url = `${API}batch.php?cluster=${this.meta.id}&after=${encodeURIComponent(after)}&limit=${limit}&bucket=${bucket}&v=${BUILD_VERSION}`;
       const rows = await queuedFetch(url);
@@ -724,6 +744,52 @@ class Monitor{
         this.consumeUpTo(simTime);
       }
     }catch(e){ /* transient */ }
+    if(gen === this.fetchGen) this.loading = false;
+    this.fetching = false;
+  }
+  // Toggling a cluster on while Play is already running needs a different fetch
+  // than renderStaticWindow(): that function consumes up to *whatever simTime is
+  // when it resolves*, which is fine while paused (simTime is frozen) but wrong
+  // here, since simTime keeps advancing during the await — consuming up to a
+  // moving target would silently mark data as "seen" that was never actually
+  // fetched. Capture the target once, up front, and consume only up to that;
+  // tick()'s justAdded exclusion covers the (now much smaller) remaining gap
+  // between that captured point and wherever simTime has gotten to by the time
+  // this resolves, via the ordinary ensureBuffer()/consumeUpTo() path.
+  async catchUpWhilePlaying(){
+    if(this.notStartedYet()){ this.primeCursorAtStart(); this.justAdded = false; return; }
+    const targetMs = simTime;
+    const windowStart = Math.max(DATASET_START, targetMs - WINDOW_MS);
+    this.buffer = [];
+    this.exhausted = false;
+    this.resetColumns();
+    this.fetchGen++;
+    const gen = this.fetchGen;
+    this.cursorTs = toMysqlDt(windowStart - 1000);
+    this.fetching = true;
+    const bucket = bucketSecondsForWindow(WINDOW_MS);
+    const nominalBuckets = Math.ceil((targetMs - windowStart)/1000/Math.max(bucket,1));
+    const limit = Math.min(100000, Math.max(1000, nominalBuckets + Math.ceil(nominalBuckets*0.15) + 50));
+    const before = encodeURIComponent(toMysqlDt(targetMs));
+    this.loading = true; this.loadingPct = null; this.loadingStartedAt = Date.now();
+    try{
+      const url = `${API}batch.php?cluster=${this.meta.id}&after=${encodeURIComponent(this.cursorTs)}&before=${before}&limit=${limit}&bucket=${bucket}&v=${BUILD_VERSION}`;
+      const rows = await queuedFetch(url, (recv,total)=>{
+        if(gen === this.fetchGen) this.loadingPct = total>0 ? Math.round(recv/total*100) : null;
+      });
+      if(gen === this.fetchGen){
+        if(!rows.length){ this.exhausted = true; }
+        else{
+          for(const r of rows) this.buffer.push(r);
+          this.cursorTs = toMysqlDt(rows[rows.length-1][0]);
+        }
+        this.consumeUpTo(targetMs); // only up to the captured target, not whatever simTime has since become
+      }
+    }catch(e){ /* transient */ }
+    // justAdded is deliberately NOT cleared here: simTime kept moving during this
+    // await, so bufferReachMs() only reaches the captured targetMs, not wherever
+    // simTime has gotten to since. tick() clears it once the (now much smaller)
+    // remaining gap closes via the ordinary ensureBuffer()/consumeUpTo() path.
     if(gen === this.fetchGen) this.loading = false;
     this.fetching = false;
   }
@@ -1145,7 +1211,7 @@ function addMonitor(meta){
   m.consumedUpTo = simTime;
   monitors.set(meta.id, m);
   document.getElementById('bank').appendChild(m.dom);
-  if(!playing) m.renderStaticWindow();
+  if(playing) m.catchUpWhilePlaying(); else { m.justAdded = false; m.renderStaticWindow(); }
   m.loadDeclines();
   updateStartTicks();
 }
@@ -1178,7 +1244,7 @@ function updateStartTicks(){
   const span = DATASET_END - DATASET_START;
   el.innerHTML = [...monitors.values()]
     .filter(m => m.firstTs != null && m.firstTs > DATASET_START + 86400000)
-    .map(m => `<div class="scrubber-tick" style="left:${(m.firstTs-DATASET_START)/span*100}%; background:${m.color}"></div>`)
+    .map(m => `<div class="scrubber-tick" style="left:${(m.firstTs-DATASET_START)/span*100}%; background:${m.color}" data-name="${m.meta.name.replace(/_/g,' ')}" data-starts="${fmtClock(m.firstTs)}"></div>`)
     .join('');
 }
 
@@ -1190,10 +1256,18 @@ function tick(wallNow){
   for(const m of monitors.values()) m.ensureBuffer();
 
   if(playing && monitors.size){
+    // a monitor stays excluded from the shared-clock cap (below) until its own
+    // buffer has genuinely caught up — not just until its initial catch-up fetch
+    // resolves, since that alone only closes most of the gap (see catchUpWhilePlaying).
+    // The check itself lives at the bottom of this block, AFTER simTime is updated
+    // for this tick — checking against the pre-update simTime would trivially pass
+    // on the very tick a monitor is constructed, since bufferReachMs() (frozen at
+    // consumedUpTo, set to simTime at construction) is then still bit-for-bit equal
+    // to the simTime this same tick is about to advance from.
     const desired = simTime + realDt*effectiveSpeed;
     let cap = Infinity;
     for(const m of monitors.values()){
-      if(!m.exhausted && !m.notStartedYet()) cap = Math.min(cap, m.bufferReachMs());
+      if(!m.exhausted && !m.notStartedYet() && !m.justAdded) cap = Math.min(cap, m.bufferReachMs());
     }
     const target = Math.min(desired, cap, DATASET_END);
     const actualAdvance = target - simTime;
@@ -1218,7 +1292,17 @@ function tick(wallNow){
     effectiveSpeed = Math.max(1, Math.min(speedMultiplier, effectiveSpeed));
 
     simTime = target;
-    for(const m of monitors.values()) m.consumeUpTo(simTime);
+    for(const m of monitors.values()){
+      // A still-catching-up monitor must never be told it has "consumed" past
+      // whatever it actually has buffered — simTime can race far ahead of it
+      // while it's excluded from the cap above, and blindly consuming up to
+      // simTime here would silently mark that unfetched span as seen, then snap
+      // the whole shared clock backward the moment it rejoins the cap below.
+      m.consumeUpTo(m.justAdded ? Math.min(simTime, m.bufferReachMs()) : simTime);
+    }
+    for(const m of monitors.values()){
+      if(m.justAdded && m.bufferReachMs() >= simTime) m.justAdded = false;
+    }
     if(simTime >= DATASET_END) playing = false, updatePlayButton();
   } else {
     smoothedRatio = 1; isLimited = false;
@@ -1440,6 +1524,16 @@ function valueAtColumn(m, colIdx){
   if(m.ringColIndex[slot] !== absCol) return null;
   return m.ringMinMax[slot*2+1];
 }
+// Shared by both hover tooltips (chart crosshair + scrubber start-ticks). Clamps
+// against the tooltip's *actual* rendered width rather than a guessed constant —
+// a guess either wraps short content unnecessarily (most tooltips, e.g. a short
+// cluster name, fit on one line with room to spare) or, sized too small, still
+// lets a genuinely long one overflow past the browser edge.
+function positionTooltip(tooltip, e){
+  const w = tooltip.offsetWidth;
+  tooltip.style.left = Math.max(4, Math.min(e.clientX+14, window.innerWidth-w-4))+'px';
+  tooltip.style.top = Math.max(e.clientY-32, 4)+'px';
+}
 (function setupHoverCrosshair(){
   const bank = document.getElementById('bank');
   const tooltip = document.getElementById('hoverTooltip');
@@ -1460,12 +1554,29 @@ function valueAtColumn(m, colIdx){
     }
     tooltip.innerHTML = fmtClock(ts) + valHtml;
     tooltip.hidden = false;
-    tooltip.style.left = Math.min(e.clientX+14, window.innerWidth-220)+'px';
-    tooltip.style.top = Math.max(e.clientY-32, 4)+'px';
+    positionTooltip(tooltip, e);
   }
   function handleLeave(){ hoverColIdx = null; tooltip.hidden = true; }
   bank.addEventListener('pointermove', handleMove);
   bank.addEventListener('pointerleave', handleLeave);
+})();
+// Hovering a start tick names which cluster it belongs to and its exact start
+// date — the tick's color alone isn't enough to place it without cross-checking
+// the legend below. Delegated on the container since updateStartTicks() rebuilds
+// the ticks' innerHTML wholesale every time a monitor is added/removed.
+(function setupTickTooltip(){
+  const ticksEl = document.getElementById('scrubberTicks');
+  const tooltip = document.getElementById('hoverTooltip');
+  function handleMove(e){
+    const tick = e.target.closest ? e.target.closest('.scrubber-tick') : null;
+    if(!tick){ tooltip.hidden = true; return; }
+    tooltip.innerHTML = `<strong>${tick.dataset.name}</strong><span class="val">data begins ${tick.dataset.starts}</span>`;
+    tooltip.hidden = false;
+    positionTooltip(tooltip, e);
+  }
+  function handleLeave(){ tooltip.hidden = true; }
+  ticksEl.addEventListener('pointermove', handleMove);
+  ticksEl.addEventListener('pointerleave', handleLeave);
 })();
 function setTargetSpeed(speed){
   speedMultiplier = Math.max(1, Math.min(5_000_000, speed));

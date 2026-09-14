@@ -88,18 +88,26 @@ try {
             $minStmt->execute([$cluster]);
             $afterUnix = ((int)$minStmt->fetchColumn()) - 1;
         }
-        $upperUnix = $afterUnix + ($limit * $bucket * 3); // 3x allowance for gaps in coverage
+        $scanRange = $limit * $bucket * 3; // 3x allowance for gaps in coverage
+        // Below the rollup threshold this aggregates the raw ~1-row/sec table directly,
+        // so cost is dominated by the scanned range, not by $limit — a caller asking for
+        // a big $limit (e.g. to buy more playback runway per request) would otherwise
+        // balloon that range and the query time right along with it (measured: ~1.7us
+        // per raw second scanned, i.e. minutes for a multi-hundred-day range). Cap the
+        // range itself so worst-case latency stays bounded regardless of $limit; a
+        // capped scan just returns fewer rows than asked for, which the caller already
+        // handles fine by fetching again next tick. Only applies to the implicit/generous
+        // case (no $before) — a caller that already bounded its own window (e.g. "show
+        // this exact month") gets exactly that window, uncapped, same as always.
+        if (!$useRollup && !$before) {
+            $scanRange = min($scanRange, 450000); // ~5.2 days of raw data, ~1.9s worst case
+        }
+        $upperUnix = $afterUnix + $scanRange;
         if ($before) {
             $upperUnix = min($upperUnix, strtotime($before . ' UTC'));
         }
-        $upperBound = gmdate('Y-m-d H:i:s', $upperUnix);
-        $afterBound = gmdate('Y-m-d H:i:s', $afterUnix);
 
-        // alias deliberately not named "bucket_start" — that's a real column on
-        // readings_hourly, and GROUP BY/ORDER BY resolve an alias matching a real
-        // column name to the COLUMN, not the computed expression, silently grouping
-        // per raw row instead of per target bucket.
-        $sql = "SELECT
+        $aggSql = "SELECT
                   FLOOR(UNIX_TIMESTAMP($tsCol)/?)*? AS bkt,
                   MIN($srcMn) AS mn,
                   MAX($srcMx) AS mx,
@@ -110,16 +118,36 @@ try {
                 GROUP BY bkt
                 ORDER BY bkt ASC
                 LIMIT ?";
-        $stmt = $pdo->prepare($sql);
-        $i = 1;
-        $stmt->bindValue($i++, $bucket, PDO::PARAM_INT);
-        $stmt->bindValue($i++, $bucket, PDO::PARAM_INT);
-        $stmt->bindValue($i++, $cluster, PDO::PARAM_INT);
-        $stmt->bindValue($i++, $afterBound, PDO::PARAM_STR);
-        $stmt->bindValue($i++, $upperBound, PDO::PARAM_STR);
-        $stmt->bindValue($i++, $limit, PDO::PARAM_INT);
-        $stmt->execute();
-        $rows = $stmt->fetchAll(PDO::FETCH_NUM);
+        $runAgg = function($afterUnix, $upperUnix) use ($pdo, $aggSql, $bucket, $cluster, $limit) {
+            $stmt = $pdo->prepare($aggSql);
+            $i = 1;
+            $stmt->bindValue($i++, $bucket, PDO::PARAM_INT);
+            $stmt->bindValue($i++, $bucket, PDO::PARAM_INT);
+            $stmt->bindValue($i++, $cluster, PDO::PARAM_INT);
+            $stmt->bindValue($i++, gmdate('Y-m-d H:i:s', $afterUnix), PDO::PARAM_STR);
+            $stmt->bindValue($i++, gmdate('Y-m-d H:i:s', $upperUnix), PDO::PARAM_STR);
+            $stmt->bindValue($i++, $limit, PDO::PARAM_INT);
+            $stmt->execute();
+            return $stmt->fetchAll(PDO::FETCH_NUM);
+        };
+        $rows = $runAgg($afterUnix, $upperUnix);
+        // The capped range above is sized for the common case (dense data), but this
+        // dataset has real multi-day gaps (a device offline for a stretch) that can be
+        // longer than the cap — landing entirely inside one legitimately finds zero rows
+        // even though more real data exists further out. Only in the implicit/uncapped-
+        // by-caller case (no $before — an explicit-before caller already got its exact,
+        // uncapped window above, so a real empty result there is meaningful): a cheap
+        // indexed lookup finds the next real row past the gap and re-aggregates from
+        // there, so a gap advances the cursor instead of permanently marking exhausted.
+        if (!$rows && !$before) {
+            $nextStmt = $pdo->prepare("SELECT UNIX_TIMESTAMP(MIN($tsCol)) FROM $table WHERE cluster_id = ? AND $tsCol > ?");
+            $nextStmt->execute([$cluster, gmdate('Y-m-d H:i:s', $afterUnix)]);
+            $nextUnix = $nextStmt->fetchColumn();
+            if ($nextUnix !== null && $nextUnix !== false) {
+                $nextUnix = (int)$nextUnix;
+                $rows = $runAgg($nextUnix - 1, $nextUnix - 1 + $scanRange);
+            }
+        }
         $out = [];
         foreach ($rows as $r) {
             $bucketEndMs = ((int)$r[0] + $bucket - 1) * 1000;
