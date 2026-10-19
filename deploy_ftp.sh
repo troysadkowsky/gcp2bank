@@ -1,0 +1,33 @@
+#!/bin/bash
+# Deploys tracked files in this repo to the live site over FTPS (explicit TLS).
+# Only uploads files `git ls-files` knows about — never touches db_config.php,
+# admin_secret.php, or /data/, which are gitignored and live only on the server.
+set -euo pipefail
+cd "$(dirname "$0")"
+
+FTP_HOST="ftp.datascientists.com"
+FTP_USER="gcp2@gcp2.datascientists.com"
+REMOTE_DIR="${REMOTE_DIR:-}"   # set if the account doesn't land in the web root, e.g. REMOTE_DIR=public_html
+
+# gitignored — holds `FTP_PASSWORD=...` so you aren't prompted every run
+[ -f "deploy_ftp.env" ] && source deploy_ftp.env
+
+if [ -z "${FTP_PASSWORD:-}" ]; then
+  read -r -s -p "FTP password for $FTP_USER: " FTP_PASSWORD
+  echo
+fi
+
+files=$(git ls-files)
+count=$(echo "$files" | wc -l | tr -d ' ')
+echo "Uploading $count tracked file(s) to $FTP_HOST${REMOTE_DIR:+/$REMOTE_DIR}..."
+
+while IFS= read -r f; do
+  remote_path="${REMOTE_DIR:+$REMOTE_DIR/}$f"
+  echo "  $f"
+  curl -s --ftp-ssl --ftp-create-dirs \
+    --user "$FTP_USER:$FTP_PASSWORD" \
+    -T "$f" \
+    "ftp://$FTP_HOST/$remote_path"
+done <<< "$files"
+
+echo "Done."
