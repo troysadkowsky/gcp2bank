@@ -27,7 +27,10 @@ while IFS= read -r f; do
   # --insecure: this host's FTPS cert is GoDaddy's shared *.prod.sin2.secureserver.net
   # wildcard, which never matches ftp.datascientists.com, so curl can't verify it —
   # the connection is still encrypted, just not identity-checked.
-  if curl -s -S --insecure --ftp-ssl --ftp-create-dirs \
+  # --ftp-ssl-control (not --ftp-ssl): encrypts the login, but leaves data transfers
+  # in plain FTP — this server's TLS data channel drops larger files (451 mid-transfer,
+  # seen on index.html) even though small files go through fine over it.
+  if curl -s -S --insecure --ftp-ssl-control --ftp-create-dirs \
     --user "$FTP_USER:$FTP_PASSWORD" \
     -T "$f" \
     "ftp://$FTP_HOST/$remote_path"; then

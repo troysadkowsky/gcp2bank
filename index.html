@@ -412,7 +412,9 @@
 const API = 'api/';
 const BUILD_VERSION = '0.1.1.9'; // bump on every deploy — forces fresh fetches past any stale cache
 const DATASET_START = Date.parse('2024-03-01T00:00:00Z');
-const DATASET_END   = Date.parse('2026-09-07T23:59:59Z');
+// fallback until init() overwrites this with the real max(last_ts) across clusters —
+// only matters for the brief window before that fetch resolves
+let DATASET_END = Date.parse('2026-10-18T23:59:59Z');
 const N_COLS = 480; // rendering resolution per monitor
 const DEFAULT_ON = ['Hong_Kong'];
 const MAX_CONCURRENT_FETCHES = 4;
@@ -1672,6 +1674,7 @@ updateAxisTicks();
   if(latestTs){
     document.getElementById('freshnessDate').textContent =
       new Date(latestTs).toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric', timeZone:'UTC' });
+    DATASET_END = latestTs;
   }
   buildPicker();
   // start one window-length in, not at DATASET_START itself — the visible strip
