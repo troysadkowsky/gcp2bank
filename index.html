@@ -166,6 +166,21 @@
   }
   .gcp2-shoutout-link:hover{ background: var(--accent-dim); border-color:var(--accent-dim); }
 
+  .freshness-note{
+    display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px;
+    background: var(--panel); border:1px dashed var(--border); border-radius:6px;
+    padding:16px 20px; margin-bottom:22px;
+  }
+  .freshness-note-text{ color:var(--ink-2); font-size:13.5px; line-height:1.55; max-width:62ch; }
+  .freshness-note-text strong{ color:var(--ink); }
+  .freshness-note-link{
+    font-family:"IBM Plex Mono",monospace; font-size:12px; font-weight:600;
+    color: var(--ink); background: transparent; border:1px solid var(--border);
+    padding:9px 16px; border-radius:20px; white-space:nowrap; text-decoration:none;
+    flex:none;
+  }
+  .freshness-note-link:hover{ border-color: var(--accent); color: var(--accent); }
+
   .picker{
     display:flex; flex-wrap:wrap; gap:6px; margin-bottom:18px;
   }
@@ -317,6 +332,13 @@
       <strong>Global Consciousness Project 2.0</strong> &mdash; a worldwide network of hardware random number generators exploring whether shared human attention leaves a trace on physical randomness. This bank plays back a historical mirror of their data. For their live, real-time network &mdash; or to learn more about the project and the science behind it &mdash; visit their site.
     </div>
     <a href="https://gcp2.net" target="_blank" rel="noopener" class="gcp2-shoutout-link">Visit gcp2.net &rarr;</a>
+  </div>
+
+  <div class="freshness-note">
+    <div class="freshness-note-text">
+      <strong>Data current through <span id="freshnessDate">&hellip;</span>.</strong> This bank is refreshed periodically rather than streamed live. If you'd like it kept continuously up to date, get in touch.
+    </div>
+    <a href="mailto:troy@datascientists.com?subject=Activate%20live%20updates%20on%20Coherence%20Monitor%20Bank" class="freshness-note-link">Contact us &rarr;</a>
   </div>
 
   <div class="picker" id="picker"></div>
@@ -1643,6 +1665,14 @@ updateAxisTicks();
 (async function init(){
   const res = await fetch(API+'clusters.php?v='+BUILD_VERSION);
   clustersMeta = await res.json();
+  const latestTs = clustersMeta.reduce((max,c)=>{
+    const t = Date.parse(c.last_ts.replace(' ','T')+'Z');
+    return t > max ? t : max;
+  }, 0);
+  if(latestTs){
+    document.getElementById('freshnessDate').textContent =
+      new Date(latestTs).toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric', timeZone:'UTC' });
+  }
   buildPicker();
   // start one window-length in, not at DATASET_START itself — the visible strip
   // trails behind simTime, so starting exactly at DATASET_START would show that
