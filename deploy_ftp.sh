@@ -21,13 +21,28 @@ files=$(git ls-files)
 count=$(echo "$files" | wc -l | tr -d ' ')
 echo "Uploading $count tracked file(s) to $FTP_HOST${REMOTE_DIR:+/$REMOTE_DIR}..."
 
+failed=()
 while IFS= read -r f; do
   remote_path="${REMOTE_DIR:+$REMOTE_DIR/}$f"
-  echo "  $f"
-  curl -s --ftp-ssl --ftp-create-dirs \
+  # --insecure: this host's FTPS cert is GoDaddy's shared *.prod.sin2.secureserver.net
+  # wildcard, which never matches ftp.datascientists.com, so curl can't verify it —
+  # the connection is still encrypted, just not identity-checked.
+  if curl -s -S --insecure --ftp-ssl --ftp-create-dirs \
     --user "$FTP_USER:$FTP_PASSWORD" \
     -T "$f" \
-    "ftp://$FTP_HOST/$remote_path"
+    "ftp://$FTP_HOST/$remote_path"; then
+    echo "  ok    $f"
+  else
+    echo "  FAILED $f"
+    failed+=("$f")
+  fi
 done <<< "$files"
 
-echo "Done."
+if [ "${#failed[@]}" -gt 0 ]; then
+  echo
+  echo "Done with ${#failed[@]} failure(s):"
+  printf '  %s\n' "${failed[@]}"
+  exit 1
+fi
+
+echo "Done — all $count file(s) uploaded."
