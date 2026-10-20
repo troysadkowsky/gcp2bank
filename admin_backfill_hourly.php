@@ -16,7 +16,7 @@ set_time_limit(0);
 ignore_user_abort(true);
 
 $cluster = (int)($_GET['cluster'] ?? 0);
-if ($cluster < 1 || $cluster > 19) {
+if ($cluster < 1 || $cluster > 20) { // 1-19: network clusters; 20: individual device(s)
     http_response_code(400);
     echo json_encode(['error' => 'bad cluster']);
     exit;

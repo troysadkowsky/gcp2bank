@@ -288,7 +288,7 @@
 <body>
 <div class="wrap">
   <header>
-    <div class="eyebrow">GCP2 &middot; historical readings, March 2024 &ndash; October 2026 &middot; v0.1.1.9</div>
+    <div class="eyebrow">GCP2 &middot; historical readings, March 2024 &ndash; October 2026 &middot; v0.1.2.0</div>
     <h1>Coherence Monitor Bank</h1>
     <p class="dek">Every reading in this bank is historical &mdash; recorded March 2024 through October 2026, played back from an 83.1-million-second record and styled like a bank of heart-rate monitors sweeping across it. Push the speed up to compress months into seconds, or slow down to watch a single moment unfold.</p>
 
@@ -410,13 +410,13 @@
 
 <script>
 const API = 'api/';
-const BUILD_VERSION = '0.1.1.9'; // bump on every deploy — forces fresh fetches past any stale cache
+const BUILD_VERSION = '0.1.2.0'; // bump on every deploy — forces fresh fetches past any stale cache
 const DATASET_START = Date.parse('2024-03-01T00:00:00Z');
 // fallback until init() overwrites this with the real max(last_ts) across clusters —
 // only matters for the brief window before that fetch resolves
 let DATASET_END = Date.parse('2026-10-18T23:59:59Z');
 const N_COLS = 480; // rendering resolution per monitor
-const DEFAULT_ON = ['Hong_Kong'];
+const DEFAULT_ON = ['Hong_Kong', 'Device_151_(NullSpook)'];
 const MAX_CONCURRENT_FETCHES = 4;
 const DEFAULT_WINDOW_MS = 2_592_000_000; // 1 month of data-time per sweep lap
 const DEFAULT_SPEED_SLIDER_POS = 518; // ≈90,000×, so a 1-month window sweeps in ~30s
@@ -594,7 +594,7 @@ class Monitor{
         <div class="val mono" data-val>&mdash;</div>
         <div class="raw mono" data-raw>last reading: &mdash;</div>
         <div class="foot">
-          <span data-devices>&mdash; devices</span>
+          <span data-devices>${this.meta.kind==='device' ? 'individual device' : '&mdash; devices'}</span>
         </div>
       </div>
       <div class="chartcol">
@@ -630,6 +630,13 @@ class Monitor{
       btn.querySelector('[data-declinestogglelabel]').innerHTML = expanded
         ? 'Show<span class="chev">&#9662;</span>' : 'Hide<span class="chev">&#9662;</span>';
     });
+  }
+  // a single device has no "active devices" count — active_seconds lands in the
+  // same buffer slot but isn't meaningful to show ticking, so that panel gets a
+  // static label instead of the per-cluster live device count
+  devicesLabel(count){
+    if(this.meta.kind === 'device') return 'individual device';
+    return count!=null ? count+' devices' : '— devices';
   }
   reset(){
     this.buffer = []; this.cursorTs = null; this.exhausted = false;
@@ -960,7 +967,7 @@ class Monitor{
       ctx.restore();
       this.valEl.textContent = '—';
       this.rawEl.textContent = 'last reading: —';
-      this.devEl.textContent = '— devices';
+      this.devEl.textContent = this.devicesLabel(null);
       this.axisLabelsEl.innerHTML = '';
       // when this panel's data starts is now shown as a colored tick on the
       // 30-month scrubber (matching this panel's color) instead of here
@@ -979,7 +986,7 @@ class Monitor{
       this.axisLabelsEl.innerHTML = `<span>${this.runningTotal.toFixed(1)}</span><span>${this.runningTotal.toFixed(1)}</span>`;
       this.valEl.textContent = this.runningTotal.toFixed(2);
       this.rawEl.textContent = 'last reading: ' + (this.lastValue!=null ? this.lastValue.toFixed(3) : '—');
-      this.devEl.textContent = this.lastDevices!=null ? this.lastDevices+' devices' : '— devices';
+      this.devEl.textContent = this.devicesLabel(this.lastDevices);
       this.statusEl.textContent = '';
       this.statusEl.className = 'status-overlay';
       this.drawHoverCrosshair(ctx,W,H,colW);
@@ -1042,7 +1049,7 @@ class Monitor{
     this.axisLabelsEl.innerHTML = `<span>${visMax.toFixed(1)}</span><span>${visMin.toFixed(1)}</span>`;
     this.valEl.textContent = this.runningTotal.toFixed(2);
     this.rawEl.textContent = 'last reading: ' + (this.lastValue!=null ? this.lastValue.toFixed(3) : '—');
-    this.devEl.textContent = this.lastDevices!=null ? this.lastDevices+' devices' : '— devices';
+    this.devEl.textContent = this.devicesLabel(this.lastDevices);
     // Belt-and-suspenders: `loading` is cleared by whichever renderStaticWindow()/
     // loadForwardPreview() call set it, guarded by a generation check so a stale
     // response can't overwrite fresher state — but that same guard means if a
@@ -1144,7 +1151,7 @@ class Monitor{
     if(this.previewLastTotal != null){
       this.valEl.textContent = this.previewLastTotal.toFixed(2);
       this.rawEl.textContent = 'last reading: ' + (this.previewLastValue!=null ? this.previewLastValue.toFixed(3) : '—');
-      this.devEl.textContent = this.previewLastDevices!=null ? this.previewLastDevices+' devices' : '— devices';
+      this.devEl.textContent = this.devicesLabel(this.previewLastDevices);
     }
     this.statusEl.textContent = '';
     this.statusEl.className = 'status-overlay';
